@@ -1,0 +1,65 @@
+package task_converger
+
+import (
+	"github.com/nu7hatch/gouuid"
+	"os"
+	"sync"
+	"time"
+
+	BBS "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	steno "github.com/cloudfoundry/gosteno"
+)
+
+type TaskConverger struct {
+	id          string
+	bbs         BBS.ExecutorBBS
+	logger      *steno.Logger
+	interval    time.Duration
+	timeToClaim time.Duration
+	closeOnce   *sync.Once
+}
+
+func New(bbs BBS.ExecutorBBS, logger *steno.Logger, interval, timeToClaim time.Duration) *TaskConverger {
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		panic("Failed to generate a random guid....:" + err.Error())
+	}
+	return &TaskConverger{
+		id:          uuid.String(),
+		bbs:         bbs,
+		logger:      logger,
+		interval:    interval,
+		timeToClaim: timeToClaim,
+		closeOnce:   &sync.Once{},
+	}
+}
+
+func (c *TaskConverger) Run(sigChan chan os.Signal) error {
+	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.interval, c.id)
+	if err != nil {
+		c.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "error when creating converge lock")
+		return err
+	}
+
+	for {
+		select {
+		case sig := <-sigChan:
+			switch sig {
+			case os.Kill:
+				c.closeOnce.Do(func() {
+					close(releaseLock)
+				})
+			}
+		case locked, ok := <-statusChannel:
+			if !ok {
+				return nil
+			}
+
+			if locked {
+				c.bbs.ConvergeTask(c.timeToClaim)
+			}
+		}
+	}
+}
