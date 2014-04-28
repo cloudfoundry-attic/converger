@@ -1,9 +1,11 @@
 package task_converger_test
 
 import (
-	"github.com/cloudfoundry/storeadapter"
 	"os"
+	"syscall"
 	"time"
+
+	"github.com/cloudfoundry/storeadapter"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	steno "github.com/cloudfoundry/gosteno"
@@ -37,7 +39,7 @@ var _ = Describe("TaskConverger", func() {
 			go taskConverger.Run(sigChan)
 		})
 		AfterEach(func() {
-			sigChan <- os.Kill
+			sigChan <- syscall.SIGINT
 		})
 
 		It("converges tasks on a regular interval", func() {
@@ -49,33 +51,38 @@ var _ = Describe("TaskConverger", func() {
 	Context("when signalled to stop", func() {
 		BeforeEach(func() {
 			go taskConverger.Run(sigChan)
-			sigChan <- os.Kill
+			time.Sleep(convergeInterval / 2)
+			sigChan <- syscall.SIGINT
 		})
 
 		It("stops convergence when told", func() {
-			time.Sleep(convergeInterval + time.Microsecond)
+			time.Sleep(convergeInterval + time.Millisecond)
 			totalCalls := fakeBBS.CallsToConverge()
 			Ω(totalCalls).Should(Equal(1))
 		})
 	})
 
 	Context("when the converge lock cannot be acquired", func() {
-		var errChan chan error
+		var err error
 
 		BeforeEach(func() {
-			errChan = make(chan error, 1)
 			fakeBBS.SetMaintainConvergeLockError(storeadapter.ErrorKeyExists)
-			go func() {
-				errChan <- taskConverger.Run(sigChan)
-			}()
-		})
 
-		It("should only converge if it has the lock", func() {
-			err := <-errChan
-			Ω(err).Should(HaveOccurred())
+			errChan := make(chan error, 1)
+			runToEnd := func() bool {
+				errChan <- taskConverger.Run(sigChan)
+				return true
+			}
+
+			Eventually(runToEnd, 1).Should(BeTrue())
+			err = <-errChan
 		})
 
 		It("returns an error", func() {
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should only converge if it has the lock", func() {
 			Consistently(fakeBBS.CallsToConverge).Should(Equal(0))
 		})
 

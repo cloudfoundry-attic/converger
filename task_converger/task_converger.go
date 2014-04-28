@@ -1,10 +1,13 @@
 package task_converger
 
 import (
-	"github.com/nu7hatch/gouuid"
+	"fmt"
 	"os"
 	"sync"
+	"syscall"
 	"time"
+
+	"github.com/nu7hatch/gouuid"
 
 	BBS "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
@@ -43,14 +46,17 @@ func (c *TaskConverger) Run(sigChan chan os.Signal) error {
 		return err
 	}
 
+	fmt.Print("Converger started")
+
 	for {
 		select {
 		case sig := <-sigChan:
 			switch sig {
-			case os.Kill:
-				c.closeOnce.Do(func() {
-					close(releaseLock)
-				})
+			case syscall.SIGINT, syscall.SIGTERM:
+				done := make(chan bool)
+				releaseLock <- done
+				<-done
+				return nil
 			}
 		case locked, ok := <-statusChannel:
 			if !ok {
