@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -54,6 +55,12 @@ func main() {
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
 	)
+
+	err := etcdAdapter.Connect()
+	if err != nil {
+		log.Fatalf("converger.etcd.connect: %s\n", err)
+	}
+
 	bbs := Bbs.New(etcdAdapter, timeprovider.NewTimeProvider())
 
 	l, err := steno.GetLogLevel(*logLevel)
@@ -74,8 +81,13 @@ func main() {
 	logger := steno.NewLogger("executor")
 
 	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, os.Interrupt, os.Kill)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	c := task_converger.New(bbs, logger, *convergenceInterval, *timeToClaimTask)
-	c.Run(sigChan)
+
+	err = c.Run(sigChan)
+	if err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
 }
