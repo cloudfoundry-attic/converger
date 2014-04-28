@@ -5,14 +5,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/gunk/runner_support"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 type ConvergerRunner struct {
 	binPath string
-	Session *cmdtest.Session
+	Session *gexec.Session
 	config  Config
 }
 
@@ -36,7 +37,7 @@ func New(binPath, etcdCluster, logLevel string, convergenceInterval, timeToClaim
 }
 
 func (r *ConvergerRunner) Start() {
-	convergerSession, err := cmdtest.StartWrapped(
+	convergerSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
 			"-etcdCluster", r.config.etcdCluster,
@@ -44,23 +45,24 @@ func (r *ConvergerRunner) Start() {
 			"-convergenceInterval", r.config.convergenceInterval.String(),
 			"-timeToClaimTask", r.config.timeToClaimTask.String(),
 		),
-		runner_support.TeeToGinkgoWriter,
-		runner_support.TeeToGinkgoWriter,
+		GinkgoWriter,
+		GinkgoWriter,
 	)
+
 	Ω(err).ShouldNot(HaveOccurred())
 	r.Session = convergerSession
+	Eventually(r.Session.Buffer()).Should(gbytes.Say("started"))
 }
 
 func (r *ConvergerRunner) Stop() {
 	if r.Session != nil {
-		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
-		_, err := r.Session.Wait(5 * time.Second)
-		Ω(err).ShouldNot(HaveOccurred())
+		r.Session.Command.Process.Signal(syscall.SIGTERM)
+		r.Session.Wait(5 * time.Second)
 	}
 }
 
 func (r *ConvergerRunner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Cmd.Process.Kill()
+		r.Session.Command.Process.Kill()
 	}
 }
