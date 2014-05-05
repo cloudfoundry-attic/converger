@@ -18,32 +18,28 @@ type ConvergerRunner struct {
 }
 
 type Config struct {
-	etcdCluster         string
-	logLevel            string
-	convergenceInterval time.Duration
-	timeToClaimTask     time.Duration
+	etcdCluster string
+	logLevel    string
 }
 
-func New(binPath, etcdCluster, logLevel string, convergenceInterval, timeToClaimTask time.Duration) *ConvergerRunner {
+func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
 	return &ConvergerRunner{
 		binPath: binPath,
 		config: Config{
-			etcdCluster:         etcdCluster,
-			logLevel:            logLevel,
-			convergenceInterval: convergenceInterval,
-			timeToClaimTask:     timeToClaimTask,
+			etcdCluster: etcdCluster,
+			logLevel:    logLevel,
 		},
 	}
 }
 
-func (r *ConvergerRunner) Start() {
+func (r *ConvergerRunner) Start(convergenceInterval, timeToClaim time.Duration) {
 	convergerSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
 			"-etcdCluster", r.config.etcdCluster,
 			"-logLevel", r.config.logLevel,
-			"-convergenceInterval", r.config.convergenceInterval.String(),
-			"-timeToClaimTask", r.config.timeToClaimTask.String(),
+			"-convergenceInterval", convergenceInterval.String(),
+			"-timeToClaimTask", timeToClaim.String(),
 		),
 		GinkgoWriter,
 		GinkgoWriter,

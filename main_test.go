@@ -35,13 +35,7 @@ var _ = Describe("Main", func() {
 		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger", "-race")
 		Ω(err).ShouldNot(HaveOccurred())
 
-		runner = converger_runner.New(
-			convergerBinPath,
-			etcdCluster,
-			"info",
-			convergeTimeout,
-			30*time.Minute,
-		)
+		runner = converger_runner.New(convergerBinPath, etcdCluster, "info")
 	})
 
 	AfterSuite(func() {
@@ -59,7 +53,7 @@ var _ = Describe("Main", func() {
 
 	Context("when the converger is running", func() {
 		BeforeEach(func() {
-			runner.Start()
+			runner.Start(convergeTimeout, 30*time.Minute)
 			time.Sleep(10 * time.Millisecond)
 			Ω(runner.Session.ExitCode()).Should(Equal(-1))
 		})
