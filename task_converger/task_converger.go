@@ -1,7 +1,6 @@
 package task_converger
 
 import (
-	"fmt"
 	"os"
 	"sync"
 	"syscall"
@@ -37,7 +36,7 @@ func New(bbs BBS.ExecutorBBS, logger *steno.Logger, interval, timeToClaim time.D
 	}
 }
 
-func (c *TaskConverger) Run(sigChan chan os.Signal) error {
+func (c *TaskConverger) Run(sigChan chan os.Signal, ready chan struct{}) error {
 	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.interval, c.id)
 	if err != nil {
 		c.logger.Errord(map[string]interface{}{
@@ -46,7 +45,9 @@ func (c *TaskConverger) Run(sigChan chan os.Signal) error {
 		return err
 	}
 
-	fmt.Print("Converger started")
+	if ready != nil {
+		close(ready)
+	}
 
 	for {
 		select {

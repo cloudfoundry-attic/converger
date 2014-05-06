@@ -36,7 +36,7 @@ var _ = Describe("TaskConverger", func() {
 
 	Context("when running normally", func() {
 		BeforeEach(func() {
-			go taskConverger.Run(sigChan)
+			go taskConverger.Run(sigChan, nil)
 		})
 		AfterEach(func() {
 			sigChan <- syscall.SIGINT
@@ -50,7 +50,7 @@ var _ = Describe("TaskConverger", func() {
 
 	Context("when signalled to stop", func() {
 		BeforeEach(func() {
-			go taskConverger.Run(sigChan)
+			go taskConverger.Run(sigChan, nil)
 			time.Sleep(convergeInterval / 2)
 			sigChan <- syscall.SIGINT
 		})
@@ -70,7 +70,7 @@ var _ = Describe("TaskConverger", func() {
 
 			errChan := make(chan error, 1)
 			runToEnd := func() bool {
-				errChan <- taskConverger.Run(sigChan)
+				errChan <- taskConverger.Run(sigChan, nil)
 				return true
 			}
 

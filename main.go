@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -85,7 +86,13 @@ func main() {
 
 	c := task_converger.New(bbs, logger, *convergenceInterval, *timeToClaimTask)
 
-	err = c.Run(sigChan)
+	ready := make(chan struct{})
+	go func() {
+		<-ready
+		fmt.Print("Converger started")
+	}()
+
+	err = c.Run(sigChan, ready)
 	if err != nil {
 		println(err.Error())
 		os.Exit(1)
