@@ -11,6 +11,9 @@ import (
 type FakeExecutorBBS struct {
 	callsToConverge int
 
+	desiredTaskChan chan *models.Task
+	desiredLrpChan  chan models.TransitionalLongRunningProcess
+
 	maintainConvergeInterval      time.Duration
 	maintainConvergeExecutorID    string
 	maintainConvergeStatusChannel <-chan bool
@@ -36,6 +39,9 @@ type FakeExecutorBBS struct {
 	completeTaskErr          error
 	convergeTimeToClaimTasks time.Duration
 
+	startedLrps []models.TransitionalLongRunningProcess
+	startLrpErr error
+
 	sync.RWMutex
 }
 
@@ -43,6 +49,8 @@ func NewFakeExecutorBBS() *FakeExecutorBBS {
 	fakeBBS := &FakeExecutorBBS{}
 	fakeBBS.MaintainExecutorPresenceInputs.HeartbeatInterval = make(chan time.Duration, 1)
 	fakeBBS.MaintainExecutorPresenceInputs.ExecutorID = make(chan string, 1)
+	fakeBBS.desiredTaskChan = make(chan *models.Task, 1)
+	fakeBBS.desiredLrpChan = make(chan models.TransitionalLongRunningProcess, 1)
 	return fakeBBS
 }
 
@@ -72,7 +80,15 @@ func (fakeBBS *FakeExecutorBBS) GetMaintainExecutorPresenceId() string {
 }
 
 func (fakeBBS *FakeExecutorBBS) WatchForDesiredTask() (<-chan *models.Task, chan<- bool, <-chan error) {
-	return nil, nil, nil
+	return fakeBBS.desiredTaskChan, nil, nil
+}
+
+func (fakeBBS *FakeExecutorBBS) WatchForDesiredTransitionalLongRunningProcess() (<-chan models.TransitionalLongRunningProcess, chan<- bool, <-chan error) {
+	return fakeBBS.desiredLrpChan, nil, nil
+}
+
+func (fakeBBS *FakeExecutorBBS) EmitDesiredTask(task *models.Task) {
+	fakeBBS.desiredTaskChan <- task
 }
 
 func (fakeBBS *FakeExecutorBBS) ClaimTask(task *models.Task, executorID string) error {
@@ -123,6 +139,22 @@ func (fakeBBS *FakeExecutorBBS) StartTask(task *models.Task, containerHandle str
 
 	fakeBBS.Lock()
 	fakeBBS.startedTasks = append(fakeBBS.startedTasks, task)
+	fakeBBS.Unlock()
+
+	return nil
+}
+
+func (fakeBBS *FakeExecutorBBS) StartTransitionalLongRunningProcess(lrp models.TransitionalLongRunningProcess) error {
+	fakeBBS.RLock()
+	err := fakeBBS.startLrpErr
+	fakeBBS.RUnlock()
+
+	if err != nil {
+		return err
+	}
+
+	fakeBBS.Lock()
+	fakeBBS.startedLrps = append(fakeBBS.startedLrps, lrp)
 	fakeBBS.Unlock()
 
 	return nil
