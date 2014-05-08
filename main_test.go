@@ -60,13 +60,13 @@ var _ = Describe("Main", func() {
 
 		Context("and a claimed task with a dead executor is present", func() {
 			BeforeEach(func() {
-				task := &models.Task{
+				task := models.Task{
 					Guid: "task-guid",
 				}
 
-				err := BBS.DesireTask(task)
+				task, err := BBS.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
-				err = BBS.ClaimTask(task, "dead-executor")
+				task, err = BBS.ClaimTask(task, "dead-executor")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				time.Sleep(convergeTimeout + 20*time.Millisecond)
