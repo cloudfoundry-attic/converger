@@ -13,14 +13,14 @@ import (
 	"github.com/onsi/gomega/gexec"
 
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 var _ = Describe("Main", func() {
 	var (
 		etcdRunner      *etcdstorerunner.ETCDClusterRunner
-		BBS             *bbs.BBS
+		bbs             *Bbs.BBS
 		runner          *converger_runner.ConvergerRunner
 		convergeTimeout = 1 * time.Second
 	)
@@ -30,7 +30,7 @@ var _ = Describe("Main", func() {
 		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 
-		BBS = bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
 
 		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger", "-race")
 		Ω(err).ShouldNot(HaveOccurred())
@@ -64,15 +64,16 @@ var _ = Describe("Main", func() {
 					Guid: "task-guid",
 				}
 
-				task, err := BBS.DesireTask(task)
+				task, err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
-				task, err = BBS.ClaimTask(task, "dead-executor")
+				task, err = bbs.ClaimTask(task, "dead-executor")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				time.Sleep(convergeTimeout + 20*time.Millisecond)
 			})
+
 			It("marks the task as failed", func() {
-				tasks, err := BBS.GetAllTasks()
+				tasks, err := bbs.GetAllTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))
 				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))

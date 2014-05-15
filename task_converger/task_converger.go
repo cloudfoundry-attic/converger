@@ -8,20 +8,20 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
-	BBS "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
 )
 
 type TaskConverger struct {
 	id          string
-	bbs         BBS.ExecutorBBS
+	bbs         Bbs.ConvergerBBS
 	logger      *steno.Logger
 	interval    time.Duration
 	timeToClaim time.Duration
 	closeOnce   *sync.Once
 }
 
-func New(bbs BBS.ExecutorBBS, logger *steno.Logger, interval, timeToClaim time.Duration) *TaskConverger {
+func New(bbs Bbs.ConvergerBBS, logger *steno.Logger, interval, timeToClaim time.Duration) *TaskConverger {
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		panic("Failed to generate a random guid....:" + err.Error())

@@ -16,7 +16,7 @@ import (
 )
 
 var _ = Describe("TaskConverger", func() {
-	var fakeBBS *fake_bbs.FakeExecutorBBS
+	var fakeBBS *fake_bbs.FakeConvergerBBS
 	var logger *steno.Logger
 	var convergeInterval time.Duration
 	var timeToClaim time.Duration
@@ -25,7 +25,7 @@ var _ = Describe("TaskConverger", func() {
 	var taskConverger *task_converger.TaskConverger
 
 	BeforeEach(func() {
-		fakeBBS = &fake_bbs.FakeExecutorBBS{}
+		fakeBBS = fake_bbs.NewFakeConvergerBBS()
 		logger = steno.NewLogger("test-logger")
 		convergeInterval = 10 * time.Millisecond
 		timeToClaim = 30 * time.Second

@@ -62,7 +62,7 @@ func main() {
 		log.Fatalf("converger.etcd.connect: %s\n", err)
 	}
 
-	bbs := Bbs.New(etcdAdapter, timeprovider.NewTimeProvider())
+	bbs := Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider())
 
 	l, err := steno.GetLogLevel(*logLevel)
 	if err != nil {
