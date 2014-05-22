@@ -23,15 +23,17 @@ type ExecutorBBS interface {
 }
 
 type RepBBS interface {
+	//services
+	MaintainRepPresence(heartbeatInterval time.Duration, repPresence models.RepPresence) (services_bbs.Presence, <-chan bool, error)
+
 	//task
 	WatchForDesiredTask() (<-chan models.Task, chan<- bool, <-chan error)
 	ClaimTask(task models.Task, executorID string) (models.Task, error)
 	StartTask(task models.Task, containerHandle string) (models.Task, error)
 	CompleteTask(task models.Task, failed bool, failureReason string, result string) (models.Task, error)
 
-	//lrp
-	WatchForDesiredTransitionalLongRunningProcess() (<-chan models.TransitionalLongRunningProcess, chan<- bool, <-chan error)
-	StartTransitionalLongRunningProcess(lrp models.TransitionalLongRunningProcess) error
+	///
+	ReportLongRunningProcessAsRunning(lrp models.LRP) error
 }
 
 type ConvergerBBS interface {
@@ -44,7 +46,21 @@ type ConvergerBBS interface {
 
 type AppManagerBBS interface {
 	//lrp
-	DesireTransitionalLongRunningProcess(models.TransitionalLongRunningProcess) error
+	DesireLongRunningProcess(models.DesiredLRP) error
+	RequestLRPStartAuction(models.LRPStartAuction) error
+
+	//services
+	GetAvailableFileServer() (string, error)
+}
+
+type AuctioneerBBS interface {
+	//services
+	GetAllReps() ([]models.RepPresence, error)
+
+	//lrp
+	WatchForLRPStartAuction() (<-chan models.LRPStartAuction, chan<- bool, <-chan error)
+	ClaimLRPStartAuction(models.LRPStartAuction) error
+	ResolveLRPStartAuction(models.LRPStartAuction) error
 }
 
 type StagerBBS interface {
@@ -88,6 +104,10 @@ func NewConvergerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.
 }
 
 func NewAppManagerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider) AppManagerBBS {
+	return NewBBS(store, timeProvider)
+}
+
+func NewAuctioneerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider) AuctioneerBBS {
 	return NewBBS(store, timeProvider)
 }
 
