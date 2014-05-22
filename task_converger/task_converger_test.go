@@ -42,6 +42,10 @@ var _ = Describe("TaskConverger", func() {
 			sigChan <- syscall.SIGINT
 		})
 
+		// It("should wait before running the first convergence", func() {
+		// 	Consistently(fakeBBS.CallsToConverge, 0.1, 0.01).Should(Equal(0))
+		// })
+
 		It("converges tasks on a regular interval", func() {
 			Eventually(fakeBBS.CallsToConverge, 1.0, 0.1).Should(BeNumerically(">", 2))
 			Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
@@ -51,12 +55,12 @@ var _ = Describe("TaskConverger", func() {
 	Context("when signalled to stop", func() {
 		BeforeEach(func() {
 			go taskConverger.Run(sigChan, nil)
-			time.Sleep(convergeInterval / 2)
+			time.Sleep(convergeInterval + convergeInterval/2)
 			sigChan <- syscall.SIGINT
 		})
 
 		It("stops convergence when told", func() {
-			time.Sleep(convergeInterval + time.Millisecond)
+			time.Sleep(convergeInterval*2 + time.Millisecond)
 			totalCalls := fakeBBS.CallsToConverge()
 			Ω(totalCalls).Should(Equal(1))
 		})

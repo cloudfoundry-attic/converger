@@ -49,6 +49,8 @@ func (c *TaskConverger) Run(sigChan chan os.Signal, ready chan struct{}) error {
 		close(ready)
 	}
 
+	firstTime := true
+
 	for {
 		select {
 		case sig := <-sigChan:
@@ -65,7 +67,10 @@ func (c *TaskConverger) Run(sigChan chan os.Signal, ready chan struct{}) error {
 			}
 
 			if locked {
-				c.bbs.ConvergeTask(c.timeToClaim)
+				if !firstTime {
+					c.bbs.ConvergeTask(c.timeToClaim)
+				}
+				firstTime = false
 			}
 		}
 	}
