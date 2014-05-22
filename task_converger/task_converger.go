@@ -68,7 +68,7 @@ func (c *TaskConverger) Run(sigChan chan os.Signal, ready chan struct{}) error {
 
 			if locked {
 				if !firstTime {
-					c.bbs.ConvergeTask(c.timeToClaim)
+					c.bbs.ConvergeTask(c.timeToClaim, c.interval)
 				}
 				firstTime = false
 			}

@@ -42,10 +42,6 @@ var _ = Describe("TaskConverger", func() {
 			sigChan <- syscall.SIGINT
 		})
 
-		// It("should wait before running the first convergence", func() {
-		// 	Consistently(fakeBBS.CallsToConverge, 0.1, 0.01).Should(Equal(0))
-		// })
-
 		It("converges tasks on a regular interval", func() {
 			Eventually(fakeBBS.CallsToConverge, 1.0, 0.1).Should(BeNumerically(">", 2))
 			Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
