@@ -36,7 +36,7 @@ func New(bbs Bbs.ConvergerBBS, logger *steno.Logger, interval, timeToClaim time.
 	}
 }
 
-func (c *TaskConverger) Run(sigChan chan os.Signal, ready chan struct{}) error {
+func (c *TaskConverger) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.interval, c.id)
 	if err != nil {
 		c.logger.Errord(map[string]interface{}{

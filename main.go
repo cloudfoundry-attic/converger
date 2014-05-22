@@ -2,12 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -15,6 +12,8 @@ import (
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/sigmon"
 
 	"github.com/cloudfoundry-incubator/converger/task_converger"
 )
@@ -52,24 +51,33 @@ var timeToClaimTask = flag.Duration(
 func main() {
 	flag.Parse()
 
-	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
-		strings.Split(*etcdCluster, ","),
-		workerpool.NewWorkerPool(10),
-	)
+	logger := initializeLogger()
+	bbs := initializeBbs(logger)
 
-	err := etcdAdapter.Connect()
+	taskConverger := ifrit.Envoke(task_converger.New(bbs, logger, *convergenceInterval, *timeToClaimTask))
+
+	logger.Info("converger.started")
+
+	monitor := ifrit.Envoke(sigmon.New(taskConverger))
+
+	err := <-monitor.Wait()
+
 	if err != nil {
-		log.Fatalf("converger.etcd.connect: %s\n", err)
+		logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "converger.exited")
+		os.Exit(1)
 	}
+	logger.Info("converger.exited")
+}
 
-	bbs := Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider())
-
+func initializeLogger() *steno.Logger {
 	l, err := steno.GetLogLevel(*logLevel)
 	if err != nil {
 		log.Fatalf("Invalid loglevel: %s\n", *logLevel)
 	}
 
-	stenoConfig := steno.Config{
+	stenoConfig := &steno.Config{
 		Level: l,
 		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
 	}
@@ -78,23 +86,20 @@ func main() {
 		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
 	}
 
-	steno.Init(&stenoConfig)
-	logger := steno.NewLogger("executor")
+	steno.Init(stenoConfig)
+	return steno.NewLogger("converger")
+}
 
-	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+func initializeBbs(logger *steno.Logger) Bbs.ConvergerBBS {
+	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
+		strings.Split(*etcdCluster, ","),
+		workerpool.NewWorkerPool(10),
+	)
 
-	c := task_converger.New(bbs, logger, *convergenceInterval, *timeToClaimTask)
-
-	ready := make(chan struct{})
-	go func() {
-		<-ready
-		fmt.Print("Converger started")
-	}()
-
-	err = c.Run(sigChan, ready)
+	err := etcdAdapter.Connect()
 	if err != nil {
-		println(err.Error())
-		os.Exit(1)
+		logger.Fatalf("converger.etcd.connect: %s\n", err)
 	}
+
+	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider())
 }
