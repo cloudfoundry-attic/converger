@@ -51,12 +51,12 @@ var _ = Describe("TaskConverger", func() {
 	Context("when signalled to stop", func() {
 		BeforeEach(func() {
 			go taskConverger.Run(sigChan, nil)
-			time.Sleep(convergeInterval + convergeInterval/2)
+			time.Sleep(convergeInterval / 2)
 			sigChan <- syscall.SIGINT
 		})
 
 		It("stops convergence when told", func() {
-			time.Sleep(convergeInterval*2 + time.Millisecond)
+			time.Sleep(convergeInterval + time.Millisecond)
 			totalCalls := fakeBBS.CallsToConverge()
 			Ω(totalCalls).Should(Equal(1))
 		})
