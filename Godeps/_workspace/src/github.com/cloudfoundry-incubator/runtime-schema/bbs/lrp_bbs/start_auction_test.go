@@ -23,8 +23,8 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				Guid:  "some-guid",
-				Index: 1,
+				ProcessGuid: "some-guid",
+				Index:       1,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
@@ -71,8 +71,8 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				Guid:  "some-guid",
-				Index: 1,
+				ProcessGuid: "some-guid",
+				Index:       1,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
@@ -118,6 +118,19 @@ var _ = Describe("Start Auction", func() {
 			Eventually(events).Should(Receive(Equal(auctionLRP)))
 		})
 
+		It("does not send an event down the pipe for deletes", func() {
+			err := bbs.RequestLRPStartAuction(auctionLRP)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			auctionLRP.State = models.LRPStartAuctionStatePending
+			Eventually(events).Should(Receive(Equal(auctionLRP)))
+
+			err = bbs.ResolveLRPStartAuction(auctionLRP)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Consistently(events).ShouldNot(Receive())
+		})
+
 		It("closes the events and errors channel when told to stop", func() {
 			stop <- true
 			stopped = true
@@ -135,8 +148,8 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				Guid:  "some-guid",
-				Index: 1,
+				ProcessGuid: "some-guid",
+				Index:       1,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
@@ -200,8 +213,8 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				Guid:  "some-guid",
-				Index: 1,
+				ProcessGuid: "some-guid",
+				Index:       1,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
