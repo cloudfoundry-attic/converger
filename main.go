@@ -101,5 +101,5 @@ func initializeBbs(logger *steno.Logger) Bbs.ConvergerBBS {
 		logger.Fatalf("converger.etcd.connect: %s\n", err)
 	}
 
-	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider())
+	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 }

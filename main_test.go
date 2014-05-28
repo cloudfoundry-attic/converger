@@ -5,6 +5,7 @@ import (
 	"syscall"
 	"time"
 
+	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -30,7 +31,15 @@ var _ = Describe("Main", func() {
 		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 
-		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		logSink := steno.NewTestingSink()
+
+		steno.Init(&steno.Config{
+			Sinks: []steno.Sink{logSink},
+		})
+
+		logger := steno.NewLogger("the-logger")
+		steno.EnterTestMode()
+		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), logger)
 
 		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger", "-race")
 		Ω(err).ShouldNot(HaveOccurred())
