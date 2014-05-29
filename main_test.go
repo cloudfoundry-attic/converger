@@ -77,11 +77,10 @@ var _ = Describe("Main", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				task, err = bbs.ClaimTask(task, "dead-executor")
 				Ω(err).ShouldNot(HaveOccurred())
-
-				time.Sleep(convergeTimeout + 20*time.Millisecond)
 			})
 
 			It("marks the task as failed", func() {
+				Eventually(bbs.GetAllCompletedTasks, convergeTimeout*2).Should(HaveLen(1))
 				tasks, err := bbs.GetAllTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))

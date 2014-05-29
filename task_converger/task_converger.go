@@ -49,15 +49,18 @@ func (c *TaskConverger) Run(sigChan <-chan os.Signal, ready chan<- struct{}) err
 		close(ready)
 	}
 
+	once := &sync.Once{}
+
 	for {
 		select {
 		case sig := <-sigChan:
 			switch sig {
 			case syscall.SIGINT, syscall.SIGTERM:
-				done := make(chan bool)
-				releaseLock <- done
-				<-done
-				return nil
+				go func() {
+					once.Do(func() {
+						close(releaseLock)
+					})
+				}()
 			}
 		case locked, ok := <-statusChannel:
 			if !ok {
