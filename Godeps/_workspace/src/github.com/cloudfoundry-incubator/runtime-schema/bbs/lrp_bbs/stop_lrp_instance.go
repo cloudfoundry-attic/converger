@@ -14,8 +14,24 @@ func (bbs *LRPBBS) RequestStopLRPInstance(stopInstance models.StopLRPInstance) e
 			{
 				Key:   shared.StopLRPInstanceSchemaPath(stopInstance),
 				Value: stopInstance.ToJSON(),
+				TTL:   60,
 			},
 		})
+	})
+}
+
+func (bbs *LRPBBS) RequestStopLRPInstances(stopInstances []models.StopLRPInstance) error {
+	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
+		var nodes []storeadapter.StoreNode
+
+		for _, stopInstance := range stopInstances {
+			nodes = append(nodes, storeadapter.StoreNode{
+				Key:   shared.StopLRPInstanceSchemaPath(stopInstance),
+				Value: stopInstance.ToJSON(),
+				TTL:   60,
+			})
+		}
+		return bbs.store.SetMulti(nodes)
 	})
 }
 
@@ -43,11 +59,11 @@ func (bbs *LRPBBS) GetAllStopLRPInstances() ([]models.StopLRPInstance, error) {
 	return stopInstances, nil
 }
 
-func (bbs *LRPBBS) RemoveStopLRPInstance(stopInstance models.StopLRPInstance) error {
+func (bbs *LRPBBS) ResolveStopLRPInstance(stopInstance models.StopLRPInstance) error {
 	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
-		err := bbs.store.Delete(shared.StopLRPInstanceSchemaPath(stopInstance))
+		err := bbs.store.Delete(shared.StopLRPInstanceSchemaPath(stopInstance), shared.ActualLRPSchemaPathFromStopLRPInstance(stopInstance))
 		if err == storeadapter.ErrorKeyNotFound {
-			return nil
+			err = nil
 		}
 		return err
 	})

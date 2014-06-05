@@ -1,11 +1,10 @@
 package lrp_bbs_test
 
 import (
-	"time"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"time"
 
-	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/lrp_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
@@ -13,12 +12,6 @@ import (
 )
 
 var _ = Describe("Start Auction", func() {
-	var bbs *LRPBBS
-
-	BeforeEach(func() {
-		bbs = New(etcdClient)
-	})
-
 	Describe("RequestLRPStartAuction", func() {
 		var auctionLRP models.LRPStartAuction
 
@@ -51,6 +44,7 @@ var _ = Describe("Start Auction", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			auctionLRP.State = models.LRPStartAuctionStatePending
+			auctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 			Ω(node.Value).Should(Equal(auctionLRP.ToJSON()))
 		})
 
@@ -110,6 +104,7 @@ var _ = Describe("Start Auction", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			auctionLRP.State = models.LRPStartAuctionStatePending
+			auctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 			Eventually(events).Should(Receive(Equal(auctionLRP)))
 		})
 
@@ -118,6 +113,7 @@ var _ = Describe("Start Auction", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			auctionLRP.State = models.LRPStartAuctionStatePending
+			auctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 			Eventually(events).Should(Receive(Equal(auctionLRP)))
 
 			err = etcdClient.SetMulti([]storeadapter.StoreNode{
@@ -136,6 +132,7 @@ var _ = Describe("Start Auction", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			auctionLRP.State = models.LRPStartAuctionStatePending
+			auctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 			Eventually(events).Should(Receive(Equal(auctionLRP)))
 
 			err = bbs.ResolveLRPStartAuction(auctionLRP)
@@ -171,16 +168,20 @@ var _ = Describe("Start Auction", func() {
 			err := bbs.RequestLRPStartAuction(auctionLRP)
 
 			auctionLRP.State = models.LRPStartAuctionStatePending
+			auctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		Context("when claiming a requested LRP auction", func() {
 			It("sets the state to claimed", func() {
+				timeProvider.Increment(time.Minute)
+
 				err := bbs.ClaimLRPStartAuction(auctionLRP)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				expectedAuctionLRP := auctionLRP
 				expectedAuctionLRP.State = models.LRPStartAuctionStateClaimed
+				expectedAuctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 
 				node, err := etcdClient.Get("/v1/start/some-guid/1")
 				Ω(err).ShouldNot(HaveOccurred())
@@ -236,6 +237,7 @@ var _ = Describe("Start Auction", func() {
 			err := bbs.RequestLRPStartAuction(auctionLRP)
 
 			auctionLRP.State = models.LRPStartAuctionStatePending
+			auctionLRP.UpdatedAt = timeProvider.Time().UnixNano()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = bbs.ClaimLRPStartAuction(auctionLRP)
