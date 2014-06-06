@@ -64,7 +64,7 @@ func (r *ConvergerRunner) Stop() {
 
 func (r *ConvergerRunner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Kill().Wait()
+		r.Session.Kill().Wait(5 * time.Second)
 		r.Session = nil
 	}
 }
