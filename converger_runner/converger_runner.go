@@ -46,8 +46,8 @@ func (r *ConvergerRunner) Start(kickPendingTaskDuration, expireClaimedTaskDurati
 			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
 			"-expireClaimedLRPStartAuctionDuration", expireClaimedLRPStartAuctionDuration.String(),
 		),
-		GinkgoWriter,
-		GinkgoWriter,
+		gexec.NewPrefixedWriter("[converger] ", GinkgoWriter),
+		gexec.NewPrefixedWriter("[converger] ", GinkgoWriter),
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())
