@@ -62,7 +62,7 @@ var _ = Describe("Main", func() {
 
 	Context("when the converger is running", func() {
 		BeforeEach(func() {
-			runner.Start(convergeTimeout, 30*time.Minute)
+			runner.Start(convergeTimeout, 30*time.Minute, 30*time.Second, 300*time.Second)
 			time.Sleep(10 * time.Millisecond)
 			Ω(runner.Session.ExitCode()).Should(Equal(-1))
 		})

@@ -1,4 +1,4 @@
-package task_converger_test
+package converger_process_test
 
 import (
 	steno "github.com/cloudfoundry/gosteno"
@@ -11,5 +11,5 @@ import (
 func TestConverger(t *testing.T) {
 	RegisterFailHandler(Fail)
 	steno.EnterTestMode(steno.LOG_DEBUG)
-	RunSpecs(t, "Task Converger Suite")
+	RunSpecs(t, "Converger Process Suite")
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/converger/converger_process"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -14,8 +15,6 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/sigmon"
-
-	"github.com/cloudfoundry-incubator/converger/task_converger"
 )
 
 var etcdCluster = flag.String(
@@ -36,16 +35,28 @@ var syslogName = flag.String(
 	"syslog name",
 )
 
-var convergenceInterval = flag.Duration(
-	"convergenceInterval",
+var kickPendingTaskDuration = flag.Duration(
+	"kickPendingTaskDuration",
 	30*time.Second,
-	"the interval, in seconds, between convergences",
+	"the interval, in seconds, between kicks to pending tasks",
 )
 
-var timeToClaimTask = flag.Duration(
-	"timeToClaimTask",
+var expireClaimedTaskDuration = flag.Duration(
+	"expireClaimedTaskDuration",
 	30*time.Minute,
-	"unclaimed run onces are marked as failed, after this time (in seconds)",
+	"unclaimed tasks are marked as failed, after this time (in seconds)",
+)
+
+var kickPendingLRPStartAuctionDuration = flag.Duration(
+	"kickPendingLRPStartAuctionDuration",
+	30*time.Second,
+	"the interval, in seconds, between kicks to pending start auctions for long-running process",
+)
+
+var expireClaimedLRPStartAuctionDuration = flag.Duration(
+	"expireClaimedLRPStartAuctionDuration",
+	300*time.Second,
+	"unclaimed start auctions for long-running processes are deleted, after this time (in seconds)",
 )
 
 func main() {
@@ -54,11 +65,18 @@ func main() {
 	logger := initializeLogger()
 	bbs := initializeBbs(logger)
 
-	taskConverger := ifrit.Envoke(task_converger.New(bbs, logger, *convergenceInterval, *timeToClaimTask))
+	convergerProcess := ifrit.Envoke(converger_process.New(
+		bbs,
+		logger,
+		*kickPendingTaskDuration,
+		*expireClaimedTaskDuration,
+		*kickPendingLRPStartAuctionDuration,
+		*expireClaimedLRPStartAuctionDuration,
+	))
 
 	logger.Info("converger.started")
 
-	monitor := ifrit.Envoke(sigmon.New(taskConverger))
+	monitor := ifrit.Envoke(sigmon.New(convergerProcess))
 
 	err := <-monitor.Wait()
 
