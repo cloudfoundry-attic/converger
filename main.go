@@ -35,6 +35,12 @@ var syslogName = flag.String(
 	"syslog name",
 )
 
+var convergeRepeatInterval = flag.Duration(
+	"convergeRepeatInterval",
+	30*time.Second,
+	"the interval, in seconds, between runs of the converge process",
+)
+
 var kickPendingTaskDuration = flag.Duration(
 	"kickPendingTaskDuration",
 	30*time.Second,
@@ -68,6 +74,7 @@ func main() {
 	convergerProcess := ifrit.Envoke(converger_process.New(
 		bbs,
 		logger,
+		*convergeRepeatInterval,
 		*kickPendingTaskDuration,
 		*expireClaimedTaskDuration,
 		*kickPendingLRPStartAuctionDuration,

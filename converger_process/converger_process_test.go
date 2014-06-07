@@ -18,6 +18,7 @@ import (
 var _ = Describe("ConvergerProcess", func() {
 	var fakeBBS *fake_bbs.FakeConvergerBBS
 	var logger *steno.Logger
+	var convergeRepeatInterval time.Duration
 	var kickPendingTaskDuration time.Duration
 	var expireClaimedTaskDuration time.Duration
 	var kickPendingLRPStartAuctionDuration time.Duration
@@ -28,6 +29,7 @@ var _ = Describe("ConvergerProcess", func() {
 	BeforeEach(func() {
 		fakeBBS = fake_bbs.NewFakeConvergerBBS()
 		logger = steno.NewLogger("test-logger")
+		convergeRepeatInterval = 10 * time.Millisecond
 		kickPendingTaskDuration = 10 * time.Millisecond
 		expireClaimedTaskDuration = 30 * time.Second
 		kickPendingLRPStartAuctionDuration = 30 * time.Second
@@ -36,7 +38,7 @@ var _ = Describe("ConvergerProcess", func() {
 
 	Context("when the lock can be established", func() {
 		BeforeEach(func() {
-			process = ifrit.Envoke(converger_process.New(fakeBBS, logger, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
+			process = ifrit.Envoke(converger_process.New(fakeBBS, logger, convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
 		})
 
 		AfterEach(func() {
@@ -68,7 +70,7 @@ var _ = Describe("ConvergerProcess", func() {
 	Context("when the lock cannot be established", func() {
 		BeforeEach(func() {
 			fakeBBS.SetMaintainConvergeLockError(storeadapter.ErrorKeyExists)
-			process = ifrit.Envoke(converger_process.New(fakeBBS, logger, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
+			process = ifrit.Envoke(converger_process.New(fakeBBS, logger, convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
 		})
 
 		It("returns an error", func() {

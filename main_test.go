@@ -20,10 +20,10 @@ import (
 
 var _ = Describe("Main", func() {
 	var (
-		etcdRunner      *etcdstorerunner.ETCDClusterRunner
-		bbs             *Bbs.BBS
-		runner          *converger_runner.ConvergerRunner
-		convergeTimeout = 1 * time.Second
+		etcdRunner       *etcdstorerunner.ETCDClusterRunner
+		bbs              *Bbs.BBS
+		runner           *converger_runner.ConvergerRunner
+		taskKickInterval = 1 * time.Second
 	)
 
 	BeforeSuite(func() {
@@ -62,7 +62,7 @@ var _ = Describe("Main", func() {
 
 	Context("when the converger is running", func() {
 		BeforeEach(func() {
-			runner.Start(convergeTimeout, 30*time.Minute, 30*time.Second, 300*time.Second)
+			runner.Start(1*time.Second, taskKickInterval, 30*time.Minute, 30*time.Second, 300*time.Second)
 			time.Sleep(10 * time.Millisecond)
 			Ω(runner.Session.ExitCode()).Should(Equal(-1))
 		})
@@ -80,7 +80,7 @@ var _ = Describe("Main", func() {
 			})
 
 			It("marks the task as failed", func() {
-				Eventually(bbs.GetAllCompletedTasks, convergeTimeout*2).Should(HaveLen(1))
+				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
 				tasks, err := bbs.GetAllTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))

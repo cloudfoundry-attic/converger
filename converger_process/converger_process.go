@@ -16,6 +16,7 @@ type ConvergerProcess struct {
 	id                                   string
 	bbs                                  Bbs.ConvergerBBS
 	logger                               *steno.Logger
+	convergeRepeatInterval               time.Duration
 	kickPendingTaskDuration              time.Duration
 	expireClaimedTaskDuration            time.Duration
 	kickPendingLRPStartAuctionDuration   time.Duration
@@ -23,15 +24,22 @@ type ConvergerProcess struct {
 	closeOnce                            *sync.Once
 }
 
-func New(bbs Bbs.ConvergerBBS, logger *steno.Logger, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration) *ConvergerProcess {
+func New(
+	bbs Bbs.ConvergerBBS,
+	logger *steno.Logger,
+	convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration,
+) *ConvergerProcess {
+
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		panic("Failed to generate a random guid....:" + err.Error())
 	}
+
 	return &ConvergerProcess{
 		id:                                   uuid.String(),
 		bbs:                                  bbs,
 		logger:                               logger,
+		convergeRepeatInterval:               convergeRepeatInterval,
 		kickPendingTaskDuration:              kickPendingTaskDuration,
 		expireClaimedTaskDuration:            expireClaimedTaskDuration,
 		kickPendingLRPStartAuctionDuration:   kickPendingLRPStartAuctionDuration,
@@ -41,7 +49,7 @@ func New(bbs Bbs.ConvergerBBS, logger *steno.Logger, kickPendingTaskDuration, ex
 }
 
 func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
-	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.kickPendingTaskDuration, c.id)
+	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.convergeRepeatInterval, c.id)
 	if err != nil {
 		c.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
@@ -72,18 +80,43 @@ func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) 
 			if locked {
 				wg := sync.WaitGroup{}
 				wg.Add(3)
+
 				go func() {
+					c.logger.Infod(map[string]interface{}{
+						"expire-claimed-task-duration": c.expireClaimedTaskDuration,
+						"kick-pending-task-duration":   c.kickPendingTaskDuration,
+					}, "converger-process.converge-tasks.starting")
+					defer c.logger.Infod(map[string]interface{}{
+						"expire-claimed-task-duration": c.expireClaimedTaskDuration,
+						"kick-pending-task-duration":   c.kickPendingTaskDuration,
+					}, "converger-process.converge-tasks.finished")
+
 					defer wg.Done()
 					c.bbs.ConvergeTask(c.expireClaimedTaskDuration, c.kickPendingTaskDuration)
 				}()
+
 				go func() {
+					c.logger.Infod(map[string]interface{}{}, "converger-process.converge-lrps.starting")
+					defer c.logger.Infod(map[string]interface{}{}, "converger-process.converge-lrps.finished")
+
 					defer wg.Done()
 					c.bbs.ConvergeLRPs()
 				}()
+
 				go func() {
+					c.logger.Infod(map[string]interface{}{
+						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
+						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
+					}, "converger-process.converge-lrp-start-auctions.starting")
+					defer c.logger.Infod(map[string]interface{}{
+						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
+						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
+					}, "converger-process.converge-lrp-start-auctions.finished")
+
 					defer wg.Done()
 					c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPStartAuctionDuration, c.expireClaimedLRPStartAuctionDuration)
 				}()
+
 				wg.Wait()
 			}
 		}
