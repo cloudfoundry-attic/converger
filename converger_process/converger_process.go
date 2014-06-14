@@ -79,7 +79,7 @@ func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) 
 
 			if locked {
 				wg := sync.WaitGroup{}
-				wg.Add(3)
+				wg.Add(4)
 
 				go func() {
 					c.logger.Infod(map[string]interface{}{
@@ -115,6 +115,20 @@ func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) 
 
 					defer wg.Done()
 					c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPStartAuctionDuration, c.expireClaimedLRPStartAuctionDuration)
+				}()
+
+				go func() {
+					c.logger.Infod(map[string]interface{}{
+						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
+						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
+					}, "converger-process.converge-lrp-stop-auctions.starting")
+					defer c.logger.Infod(map[string]interface{}{
+						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
+						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
+					}, "converger-process.converge-lrp-stop-auctions.finished")
+
+					defer wg.Done()
+					c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPStartAuctionDuration, c.expireClaimedLRPStartAuctionDuration)
 				}()
 
 				wg.Wait()

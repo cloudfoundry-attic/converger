@@ -57,12 +57,14 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.CallsToConvergeTasks).Should(Equal(1))
 			Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(1))
 			Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(1))
+			Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(1))
 			Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
 
 			fakeBBS.ConvergeLockStatusChan <- true
 			Eventually(fakeBBS.CallsToConvergeTasks).Should(Equal(2))
 			Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(2))
 			Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(2))
+			Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(2))
 			Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
 		})
 	})
@@ -82,6 +84,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Consistently(fakeBBS.CallsToConvergeTasks).Should(Equal(0))
 			Consistently(fakeBBS.CallsToConvergeLRPs).Should(Equal(0))
 			Consistently(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(0))
+			Consistently(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(0))
 		})
 	})
 })
