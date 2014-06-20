@@ -73,9 +73,9 @@ var _ = Describe("Main", func() {
 					Guid: "task-guid",
 				}
 
-				task, err := bbs.DesireTask(task)
+				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
-				task, err = bbs.ClaimTask(task, "dead-executor")
+				err = bbs.ClaimTask(task.Guid, "dead-executor")
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
