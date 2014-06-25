@@ -70,7 +70,15 @@ var _ = Describe("Main", func() {
 		Context("and a claimed task with a dead executor is present", func() {
 			BeforeEach(func() {
 				task := models.Task{
-					Guid: "task-guid",
+					Guid:  "task-guid",
+					Stack: "stack",
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.RunAction{
+								Script: "cat /tmp/file",
+							},
+						},
+					},
 				}
 
 				err := bbs.DesireTask(task)
