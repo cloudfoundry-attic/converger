@@ -9,10 +9,10 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/sigmon"
 )
@@ -21,12 +21,6 @@ var etcdCluster = flag.String(
 	"etcdCluster",
 	"http://127.0.0.1:4001",
 	"comma-separated list of etcd addresses (http://ip:port)",
-)
-
-var syslogName = flag.String(
-	"syslogName",
-	"",
-	"syslog name",
 )
 
 var convergeRepeatInterval = flag.Duration(
@@ -62,9 +56,9 @@ var expireClaimedLRPStartAuctionDuration = flag.Duration(
 func main() {
 	flag.Parse()
 
-	bbs := initializeBbs(initializeStenoLogger())
-
 	logger := cf_lager.New("converger")
+
+	bbs := initializeBbs(logger)
 
 	convergerProcess := ifrit.Envoke(converger_process.New(
 		bbs,
@@ -89,20 +83,7 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeStenoLogger() *steno.Logger {
-	stenoConfig := &steno.Config{
-		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
-	}
-
-	if *syslogName != "" {
-		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
-	}
-
-	steno.Init(stenoConfig)
-	return steno.NewLogger("converger")
-}
-
-func initializeBbs(logger *steno.Logger) Bbs.ConvergerBBS {
+func initializeBbs(logger lager.Logger) Bbs.ConvergerBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
@@ -110,7 +91,7 @@ func initializeBbs(logger *steno.Logger) Bbs.ConvergerBBS {
 
 	err := etcdAdapter.Connect()
 	if err != nil {
-		logger.Fatalf("converger.etcd.connect: %s\n", err)
+		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
 	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
