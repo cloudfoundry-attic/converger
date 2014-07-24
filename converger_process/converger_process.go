@@ -7,27 +7,31 @@ import (
 	"time"
 
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/lager"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	steno "github.com/cloudfoundry/gosteno"
 )
 
 type ConvergerProcess struct {
-	id                                   string
-	bbs                                  Bbs.ConvergerBBS
-	logger                               *steno.Logger
-	convergeRepeatInterval               time.Duration
-	kickPendingTaskDuration              time.Duration
-	expireClaimedTaskDuration            time.Duration
-	kickPendingLRPStartAuctionDuration   time.Duration
-	expireClaimedLRPStartAuctionDuration time.Duration
-	closeOnce                            *sync.Once
+	id                              string
+	bbs                             Bbs.ConvergerBBS
+	logger                          lager.Logger
+	convergeRepeatInterval          time.Duration
+	kickPendingTaskDuration         time.Duration
+	expireClaimedTaskDuration       time.Duration
+	kickPendingLRPAuctionDuration   time.Duration
+	expireClaimedLRPAuctionDuration time.Duration
+	closeOnce                       *sync.Once
 }
 
 func New(
 	bbs Bbs.ConvergerBBS,
-	logger *steno.Logger,
-	convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration,
+	logger lager.Logger,
+	convergeRepeatInterval,
+	kickPendingTaskDuration,
+	expireClaimedTaskDuration,
+	kickPendingLRPAuctionDuration,
+	expireClaimedLRPAuctionDuration time.Duration,
 ) *ConvergerProcess {
 
 	uuid, err := uuid.NewV4()
@@ -36,24 +40,22 @@ func New(
 	}
 
 	return &ConvergerProcess{
-		id:                                   uuid.String(),
-		bbs:                                  bbs,
-		logger:                               logger,
-		convergeRepeatInterval:               convergeRepeatInterval,
-		kickPendingTaskDuration:              kickPendingTaskDuration,
-		expireClaimedTaskDuration:            expireClaimedTaskDuration,
-		kickPendingLRPStartAuctionDuration:   kickPendingLRPStartAuctionDuration,
-		expireClaimedLRPStartAuctionDuration: expireClaimedLRPStartAuctionDuration,
-		closeOnce: &sync.Once{},
+		id:                              uuid.String(),
+		bbs:                             bbs,
+		logger:                          logger,
+		convergeRepeatInterval:          convergeRepeatInterval,
+		kickPendingTaskDuration:         kickPendingTaskDuration,
+		expireClaimedTaskDuration:       expireClaimedTaskDuration,
+		kickPendingLRPAuctionDuration:   kickPendingLRPAuctionDuration,
+		expireClaimedLRPAuctionDuration: expireClaimedLRPAuctionDuration,
+		closeOnce:                       &sync.Once{},
 	}
 }
 
 func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.convergeRepeatInterval, c.id)
 	if err != nil {
-		c.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "error when creating converge lock")
+		c.logger.Error("failed-acquiring-converge-lock", err)
 		return err
 	}
 
@@ -79,56 +81,61 @@ func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) 
 
 			if locked {
 				wg := sync.WaitGroup{}
-				wg.Add(4)
 
+				convergeTaskLog := c.logger.Session("converge-tasks", lager.Data{
+					"expire-claimed-task-duration": c.expireClaimedTaskDuration,
+					"kick-pending-task-duration":   c.kickPendingTaskDuration,
+				})
+
+				convergeLRPLog := c.logger.Session("converge-lrps")
+
+				convergeLRPStartLog := c.logger.Session("converge-lrp-start-auctions", lager.Data{
+					"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
+					"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
+				})
+
+				convergeLRPStopLog := c.logger.Session("converge-lrp-stop-auctions", lager.Data{
+					"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
+					"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
+				})
+
+				wg.Add(1)
 				go func() {
-					c.logger.Infod(map[string]interface{}{
-						"expire-claimed-task-duration": c.expireClaimedTaskDuration,
-						"kick-pending-task-duration":   c.kickPendingTaskDuration,
-					}, "converger-process.converge-tasks.starting")
-					defer c.logger.Infod(map[string]interface{}{
-						"expire-claimed-task-duration": c.expireClaimedTaskDuration,
-						"kick-pending-task-duration":   c.kickPendingTaskDuration,
-					}, "converger-process.converge-tasks.finished")
-
 					defer wg.Done()
+
+					convergeTaskLog.Info("starting")
+					defer convergeTaskLog.Info("finished")
+
 					c.bbs.ConvergeTask(c.expireClaimedTaskDuration, c.kickPendingTaskDuration)
 				}()
 
+				wg.Add(1)
 				go func() {
-					c.logger.Infod(map[string]interface{}{}, "converger-process.converge-lrps.starting")
-					defer c.logger.Infod(map[string]interface{}{}, "converger-process.converge-lrps.finished")
-
 					defer wg.Done()
+
+					convergeLRPLog.Info("starting")
+					defer convergeLRPLog.Info("finished")
+
 					c.bbs.ConvergeLRPs()
 				}()
 
+				wg.Add(1)
 				go func() {
-					c.logger.Infod(map[string]interface{}{
-						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
-						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
-					}, "converger-process.converge-lrp-start-auctions.starting")
-					defer c.logger.Infod(map[string]interface{}{
-						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
-						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
-					}, "converger-process.converge-lrp-start-auctions.finished")
-
 					defer wg.Done()
-					c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPStartAuctionDuration, c.expireClaimedLRPStartAuctionDuration)
+
+					convergeLRPStartLog.Info("starting")
+					defer convergeLRPStartLog.Info("finished")
+
+					c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
 				}()
 
+				wg.Add(1)
 				go func() {
-					c.logger.Infod(map[string]interface{}{
-						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
-						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
-					}, "converger-process.converge-lrp-stop-auctions.starting")
-					defer c.logger.Infod(map[string]interface{}{
-						"expire-claimed-task-duration": c.expireClaimedLRPStartAuctionDuration,
-						"kick-pending-task-duration":   c.kickPendingLRPStartAuctionDuration,
-					}, "converger-process.converge-lrp-stop-auctions.finished")
-
 					defer wg.Done()
-					c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPStartAuctionDuration, c.expireClaimedLRPStartAuctionDuration)
+
+					convergeLRPStopLog.Info("starting")
+					defer convergeLRPStopLog.Info("finished")
+					c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
 				}()
 
 				wg.Wait()

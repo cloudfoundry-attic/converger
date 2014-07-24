@@ -2,11 +2,11 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
@@ -21,12 +21,6 @@ var etcdCluster = flag.String(
 	"etcdCluster",
 	"http://127.0.0.1:4001",
 	"comma-separated list of etcd addresses (http://ip:port)",
-)
-
-var logLevel = flag.String(
-	"logLevel",
-	"info",
-	"the logging level (none, fatal, error, warn, info, debug, debug1, debug2, all)",
 )
 
 var syslogName = flag.String(
@@ -68,8 +62,9 @@ var expireClaimedLRPStartAuctionDuration = flag.Duration(
 func main() {
 	flag.Parse()
 
-	logger := initializeLogger()
-	bbs := initializeBbs(logger)
+	bbs := initializeBbs(initializeStenoLogger())
+
+	logger := cf_lager.New("converger")
 
 	convergerProcess := ifrit.Envoke(converger_process.New(
 		bbs,
@@ -81,29 +76,21 @@ func main() {
 		*expireClaimedLRPStartAuctionDuration,
 	))
 
-	logger.Info("converger.started")
-
 	monitor := ifrit.Envoke(sigmon.New(convergerProcess))
 
-	err := <-monitor.Wait()
+	logger.Info("started")
 
+	err := <-monitor.Wait()
 	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "converger.exited")
+		logger.Error("exited-with-failure", err)
 		os.Exit(1)
 	}
-	logger.Info("converger.exited")
+
+	logger.Info("exited")
 }
 
-func initializeLogger() *steno.Logger {
-	l, err := steno.GetLogLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("Invalid loglevel: %s\n", *logLevel)
-	}
-
+func initializeStenoLogger() *steno.Logger {
 	stenoConfig := &steno.Config{
-		Level: l,
 		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
 	}
 

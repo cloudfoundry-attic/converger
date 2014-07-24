@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
-	steno "github.com/cloudfoundry/gosteno"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -17,7 +17,7 @@ import (
 
 var _ = Describe("ConvergerProcess", func() {
 	var fakeBBS *fake_bbs.FakeConvergerBBS
-	var logger *steno.Logger
+	var logger *lagertest.TestLogger
 	var convergeRepeatInterval time.Duration
 	var kickPendingTaskDuration time.Duration
 	var expireClaimedTaskDuration time.Duration
@@ -28,7 +28,7 @@ var _ = Describe("ConvergerProcess", func() {
 
 	BeforeEach(func() {
 		fakeBBS = fake_bbs.NewFakeConvergerBBS()
-		logger = steno.NewLogger("test-logger")
+		logger = lagertest.NewTestLogger("test")
 		convergeRepeatInterval = 10 * time.Millisecond
 		kickPendingTaskDuration = 10 * time.Millisecond
 		expireClaimedTaskDuration = 30 * time.Second
