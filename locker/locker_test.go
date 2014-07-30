@@ -33,12 +33,12 @@ var _ = Describe("Locker", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		ranRunner = make(chan struct{})
+		ranRunner = make(chan struct{}, 1)
 
 		gotSignals = make(chan os.Signal, 1)
 
 		runner = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-			close(ranRunner)
+					ranRunner <- struct{}{}
 			close(ready)
 			gotSignals <- <-signals
 			return nil
@@ -67,7 +67,20 @@ var _ = Describe("Locker", func() {
 		})
 
 		It("runs the inner runner", func() {
-			Eventually(ranRunner).Should(BeClosed())
+			Eventually(ranRunner).Should(Receive())
+		})
+
+		It("doesn't start the freakin' runner every dang time we heartbeat", func() {
+			Eventually(ranRunner).Should(Receive())
+
+			fakeBBS.ConvergeLockStatusChan <- true
+			Consistently(ranRunner).ShouldNot(Receive())
+
+			fakeBBS.ConvergeLockStatusChan <- true
+			Consistently(ranRunner).ShouldNot(Receive())
+
+			fakeBBS.ConvergeLockStatusChan <- true
+			Consistently(ranRunner).ShouldNot(Receive())
 		})
 
 		Context("and the inner runner exits", func() {
@@ -157,7 +170,7 @@ var _ = Describe("Locker", func() {
 
 		It("does not envoke the runner", func() {
 			<-process.Wait()
-			Ω(ranRunner).ShouldNot(BeClosed())
+			Ω(ranRunner).ShouldNot(Receive())
 		})
 	})
 })

@@ -69,8 +69,10 @@ func (runner *LockedRunner) Run(signals <-chan os.Signal, ready chan<- struct{})
 					gotLock = time.Now()
 				}
 
-				process = ifrit.Envoke(runner.Runner)
-				processExited = process.Wait()
+				if process == nil {
+					process = ifrit.Envoke(runner.Runner)
+					processExited = process.Wait()
+				}
 			} else {
 				runner.Logger.Error("lost-lock", nil, lager.Data{
 					"had-lock-for": time.Since(gotLock).String(),
