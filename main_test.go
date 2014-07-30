@@ -73,6 +73,8 @@ var _ = Describe("Main", func() {
 	Context("when a claimed task with a dead executor is present", func() {
 		JustBeforeEach(func() {
 			task := models.Task{
+				Domain: "tests",
+
 				Guid:  "task-guid",
 				Stack: "stack",
 				Actions: []models.ExecutorAction{
@@ -105,6 +107,8 @@ var _ = Describe("Main", func() {
 	Describe("when an LRP is desired", func() {
 		JustBeforeEach(func() {
 			err := bbs.DesireLRP(models.DesiredLRP{
+				Domain: "tests",
+
 				ProcessGuid: "the-guid",
 
 				Stack: "some-stack",

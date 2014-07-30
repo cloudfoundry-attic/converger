@@ -26,6 +26,7 @@ var _ = Describe("LRPreProcessor", func() {
 		lrpp = New(bbs)
 
 		lrpWithPlaceholders = models.DesiredLRP{
+			Domain:      "some-domain",
 			ProcessGuid: "some-process-guid",
 
 			Stack: "some-stack",
@@ -74,6 +75,7 @@ var _ = Describe("LRPreProcessor", func() {
 		}
 
 		expectedLRP = models.DesiredLRP{
+			Domain:      "some-domain",
 			ProcessGuid: "some-process-guid",
 
 			Stack: "some-stack",

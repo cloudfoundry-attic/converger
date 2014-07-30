@@ -44,6 +44,7 @@ var _ = Describe("Watcher", func() {
 		watcherRunner := New(bbs, lrpp, logger)
 
 		desiredLRP = models.DesiredLRP{
+			Domain:      "some-domain",
 			ProcessGuid: "the-app-guid-the-app-version",
 
 			Instances: 2,
