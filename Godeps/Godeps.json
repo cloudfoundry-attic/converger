@@ -15,11 +15,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "1c23542ed73b316caddbe0737aae0496a73a69aa"
+			"Rev": "cac1170d9579bdae2caa155fcb3400608ad6a59c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "1c23542ed73b316caddbe0737aae0496a73a69aa"
+			"Rev": "cac1170d9579bdae2caa155fcb3400608ad6a59c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
