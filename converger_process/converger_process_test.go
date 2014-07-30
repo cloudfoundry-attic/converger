@@ -4,7 +4,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
@@ -14,6 +13,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 )
+
+const aBit = 100 * time.Millisecond
 
 var _ = Describe("ConvergerProcess", func() {
 	var fakeBBS *fake_bbs.FakeConvergerBBS
@@ -29,62 +30,33 @@ var _ = Describe("ConvergerProcess", func() {
 	BeforeEach(func() {
 		fakeBBS = fake_bbs.NewFakeConvergerBBS()
 		logger = lagertest.NewTestLogger("test")
-		convergeRepeatInterval = 10 * time.Millisecond
+
+		convergeRepeatInterval = 1 * time.Second
+
 		kickPendingTaskDuration = 10 * time.Millisecond
 		expireClaimedTaskDuration = 30 * time.Second
 		kickPendingLRPStartAuctionDuration = 30 * time.Second
 		expireClaimedLRPStartAuctionDuration = 300 * time.Second
+
+		process = ifrit.Envoke(converger_process.New(fakeBBS, logger, convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
 	})
 
-	Context("when the lock can be established", func() {
-		BeforeEach(func() {
-			process = ifrit.Envoke(converger_process.New(fakeBBS, logger, convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
-		})
-
-		AfterEach(func() {
-			process.Signal(syscall.SIGINT)
-			Eventually(fakeBBS.ConvergeLockStopChan).Should(BeClosed())
-			close(fakeBBS.ConvergeLockStatusChan)
-			Eventually(process.Wait()).Should(Receive())
-		})
-
-		It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
-			Consistently(fakeBBS.CallsToConvergeTasks).Should(Equal(0))
-			Consistently(fakeBBS.CallsToConvergeLRPs).Should(Equal(0))
-			Consistently(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(0))
-
-			fakeBBS.ConvergeLockStatusChan <- true
-			Eventually(fakeBBS.CallsToConvergeTasks).Should(Equal(1))
-			Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(1))
-			Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(1))
-			Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(1))
-			Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
-
-			fakeBBS.ConvergeLockStatusChan <- true
-			Eventually(fakeBBS.CallsToConvergeTasks).Should(Equal(2))
-			Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(2))
-			Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(2))
-			Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(2))
-			Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
-		})
+	AfterEach(func() {
+		process.Signal(syscall.SIGINT)
+		Eventually(process.Wait()).Should(Receive())
 	})
 
-	Context("when the lock cannot be established", func() {
-		BeforeEach(func() {
-			fakeBBS.SetMaintainConvergeLockError(storeadapter.ErrorKeyExists)
-			process = ifrit.Envoke(converger_process.New(fakeBBS, logger, convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
-		})
+	It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
+		Eventually(fakeBBS.CallsToConvergeTasks, convergeRepeatInterval+2*aBit).Should(Equal(1))
+		Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(1))
+		Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(1))
+		Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(1))
+		Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
 
-		It("returns an error", func() {
-			err := <-process.Wait()
-			Ω(err).Should(HaveOccurred())
-		})
-
-		It("should not attempt to converge", func() {
-			Consistently(fakeBBS.CallsToConvergeTasks).Should(Equal(0))
-			Consistently(fakeBBS.CallsToConvergeLRPs).Should(Equal(0))
-			Consistently(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(0))
-			Consistently(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(0))
-		})
+		Eventually(fakeBBS.CallsToConvergeTasks, convergeRepeatInterval+2*aBit).Should(Equal(2))
+		Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(2))
+		Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(2))
+		Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(2))
+		Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
 	})
 })

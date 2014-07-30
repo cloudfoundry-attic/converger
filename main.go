@@ -8,12 +8,16 @@ import (
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
+	"github.com/cloudfoundry-incubator/converger/locker"
+	"github.com/cloudfoundry-incubator/converger/lrpreprocessor"
+	"github.com/cloudfoundry-incubator/converger/lrpwatcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
@@ -60,7 +64,7 @@ func main() {
 
 	bbs := initializeBbs(logger)
 
-	convergerProcess := ifrit.Envoke(converger_process.New(
+	converger := converger_process.New(
 		bbs,
 		logger,
 		*convergeRepeatInterval,
@@ -68,9 +72,19 @@ func main() {
 		*expireClaimedTaskDuration,
 		*kickPendingLRPStartAuctionDuration,
 		*expireClaimedLRPStartAuctionDuration,
-	))
+	)
 
-	monitor := ifrit.Envoke(sigmon.New(convergerProcess))
+	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(bbs), logger)
+
+	monitor := ifrit.Envoke(sigmon.New(ifrit.Envoke(&locker.LockedRunner{
+		HeartbeatInterval: *convergeRepeatInterval,
+		BBS:               bbs,
+		Logger:            logger,
+		Runner: grouper.RunGroup{
+			"converger": converger,
+			"watcher":   watcher,
+		},
+	})))
 
 	logger.Info("started")
 

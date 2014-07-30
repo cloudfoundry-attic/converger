@@ -3,7 +3,6 @@ package converger_process
 import (
 	"os"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -52,94 +51,77 @@ func New(
 	}
 }
 
-func (c *ConvergerProcess) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
-	statusChannel, releaseLock, err := c.bbs.MaintainConvergeLock(c.convergeRepeatInterval, c.id)
-	if err != nil {
-		c.logger.Error("failed-acquiring-converge-lock", err)
-		return err
-	}
+func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	ticker := time.NewTicker(c.convergeRepeatInterval)
 
 	close(ready)
 
-	once := &sync.Once{}
-
 	for {
 		select {
-		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGINT, syscall.SIGTERM:
-				go func() {
-					once.Do(func() {
-						close(releaseLock)
-					})
-				}()
-			}
-		case locked, ok := <-statusChannel:
-			if !ok {
-				return nil
-			}
+		case <-signals:
+			return nil
 
-			if locked {
-				wg := sync.WaitGroup{}
+		case <-ticker.C:
+			convergeTaskLog := c.logger.Session("converge-tasks", lager.Data{
+				"expire-claimed-task-duration": c.expireClaimedTaskDuration,
+				"kick-pending-task-duration":   c.kickPendingTaskDuration,
+			})
 
-				convergeTaskLog := c.logger.Session("converge-tasks", lager.Data{
-					"expire-claimed-task-duration": c.expireClaimedTaskDuration,
-					"kick-pending-task-duration":   c.kickPendingTaskDuration,
-				})
+			convergeLRPLog := c.logger.Session("converge-lrps")
 
-				convergeLRPLog := c.logger.Session("converge-lrps")
+			convergeLRPStartLog := c.logger.Session("converge-lrp-start-auctions", lager.Data{
+				"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
+				"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
+			})
 
-				convergeLRPStartLog := c.logger.Session("converge-lrp-start-auctions", lager.Data{
-					"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
-					"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
-				})
+			convergeLRPStopLog := c.logger.Session("converge-lrp-stop-auctions", lager.Data{
+				"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
+				"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
+			})
 
-				convergeLRPStopLog := c.logger.Session("converge-lrp-stop-auctions", lager.Data{
-					"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
-					"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
-				})
+			wg := sync.WaitGroup{}
 
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-					convergeTaskLog.Info("starting")
-					defer convergeTaskLog.Info("finished")
+				convergeTaskLog.Info("starting")
+				defer convergeTaskLog.Info("finished")
 
-					c.bbs.ConvergeTask(c.expireClaimedTaskDuration, c.kickPendingTaskDuration)
-				}()
+				c.bbs.ConvergeTask(c.expireClaimedTaskDuration, c.kickPendingTaskDuration)
+			}()
 
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-					convergeLRPLog.Info("starting")
-					defer convergeLRPLog.Info("finished")
+				convergeLRPLog.Info("starting")
+				defer convergeLRPLog.Info("finished")
 
-					c.bbs.ConvergeLRPs()
-				}()
+				c.bbs.ConvergeLRPs()
+			}()
 
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-					convergeLRPStartLog.Info("starting")
-					defer convergeLRPStartLog.Info("finished")
+				convergeLRPStartLog.Info("starting")
+				defer convergeLRPStartLog.Info("finished")
 
-					c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
-				}()
+				c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
+			}()
 
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-					convergeLRPStopLog.Info("starting")
-					defer convergeLRPStopLog.Info("finished")
-					c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
-				}()
+				convergeLRPStopLog.Info("starting")
+				defer convergeLRPStopLog.Info("finished")
 
-				wg.Wait()
-			}
+				c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
+			}()
+
+			wg.Wait()
 		}
 	}
 }
