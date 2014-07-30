@@ -62,21 +62,9 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			return nil
 
 		case <-ticker.C:
-			convergeTaskLog := c.logger.Session("converge-tasks", lager.Data{
-				"expire-claimed-task-duration": c.expireClaimedTaskDuration,
-				"kick-pending-task-duration":   c.kickPendingTaskDuration,
-			})
-
-			convergeLRPLog := c.logger.Session("converge-lrps")
-
-			convergeLRPStartLog := c.logger.Session("converge-lrp-start-auctions", lager.Data{
-				"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
-				"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
-			})
-
-			convergeLRPStopLog := c.logger.Session("converge-lrp-stop-auctions", lager.Data{
-				"expire-claimed-task-duration": c.expireClaimedLRPAuctionDuration,
-				"kick-pending-task-duration":   c.kickPendingLRPAuctionDuration,
+			tickLog := c.logger.Session("converge-tick", lager.Data{
+				"expire-claimed-task-duration": c.expireClaimedTaskDuration.String(),
+				"kick-pending-task-duration":   c.kickPendingTaskDuration.String(),
 			})
 
 			wg := sync.WaitGroup{}
@@ -85,8 +73,8 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			go func() {
 				defer wg.Done()
 
-				convergeTaskLog.Info("starting")
-				defer convergeTaskLog.Info("finished")
+				tickLog.Info("starting-tasks")
+				defer tickLog.Info("finished-tasks")
 
 				c.bbs.ConvergeTask(c.expireClaimedTaskDuration, c.kickPendingTaskDuration)
 			}()
@@ -95,8 +83,8 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			go func() {
 				defer wg.Done()
 
-				convergeLRPLog.Info("starting")
-				defer convergeLRPLog.Info("finished")
+				tickLog.Info("starting-lrps")
+				defer tickLog.Info("finished-lrps")
 
 				c.bbs.ConvergeLRPs()
 			}()
@@ -105,8 +93,8 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			go func() {
 				defer wg.Done()
 
-				convergeLRPStartLog.Info("starting")
-				defer convergeLRPStartLog.Info("finished")
+				tickLog.Info("starting-start-auctions")
+				defer tickLog.Info("finished-start-auctions")
 
 				c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
 			}()
@@ -115,8 +103,8 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			go func() {
 				defer wg.Done()
 
-				convergeLRPStopLog.Info("starting")
-				defer convergeLRPStopLog.Info("finished")
+				tickLog.Info("starting-stop-auctions")
+				defer tickLog.Info("finished-stop-auctions")
 
 				c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
 			}()
