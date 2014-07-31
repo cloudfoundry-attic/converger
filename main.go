@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	"github.com/cloudfoundry-incubator/converger/locker"
@@ -63,6 +64,8 @@ func main() {
 	logger := cf_lager.New("converger")
 
 	bbs := initializeBbs(logger)
+
+	cf_debug_server.Run()
 
 	converger := converger_process.New(
 		bbs,
