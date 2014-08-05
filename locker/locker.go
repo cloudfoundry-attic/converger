@@ -52,16 +52,20 @@ func (runner *LockedRunner) Run(signals <-chan os.Signal, ready chan<- struct{})
 
 			switch sig {
 			case syscall.SIGINT, syscall.SIGTERM:
-				go func() {
-					once.Do(func() {
-						close(releaseLock)
-					})
-				}()
+				once.Do(func() {
+					// should trigger status channel closing once released
+					close(releaseLock)
+				})
 			}
 
 		case locked, ok := <-statusChannel:
 			if !ok {
-				return nil
+				if processExited == nil {
+					return nil
+				}
+
+				statusChannel = nil
+				break
 			}
 
 			if locked {
@@ -73,7 +77,7 @@ func (runner *LockedRunner) Run(signals <-chan os.Signal, ready chan<- struct{})
 					process = ifrit.Envoke(runner.Runner)
 					processExited = process.Wait()
 				}
-			} else {
+			} else if process != nil {
 				runner.Logger.Error("lost-lock", nil, lager.Data{
 					"had-lock-for": time.Since(gotLock).String(),
 				})

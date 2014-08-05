@@ -38,7 +38,7 @@ var _ = Describe("Locker", func() {
 		gotSignals = make(chan os.Signal, 1)
 
 		runner = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-					ranRunner <- struct{}{}
+			ranRunner <- struct{}{}
 			close(ready)
 			gotSignals <- <-signals
 			return nil
@@ -81,6 +81,27 @@ var _ = Describe("Locker", func() {
 
 			fakeBBS.ConvergeLockStatusChan <- true
 			Consistently(ranRunner).ShouldNot(Receive())
+		})
+
+		Context("when the lock is released while the process is running", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				runner = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+					close(ready)
+					close(fakeBBS.ConvergeLockStatusChan)
+
+					// let it see status channel close, rather than process existing
+					time.Sleep(100 * time.Millisecond)
+
+					return disaster
+				})
+			})
+
+			It("waits on the inner process", func() {
+				err := <-process.Wait()
+				Ω(err).Should(Equal(disaster))
+			})
 		})
 
 		Context("and the inner runner exits", func() {
@@ -154,6 +175,36 @@ var _ = Describe("Locker", func() {
 
 			It("forwards it to the process", func() {
 				Eventually(gotSignals).Should(Receive(Equal(syscall.SIGUSR2)))
+			})
+		})
+	})
+
+	Context("when the lock cannot be acquired", func() {
+		BeforeEach(func() {
+			go func() {
+				// deal with aftereach interrupting the process; simulate real-world
+				// code path which is to release and close status chan
+				<-fakeBBS.ConvergeLockStopChan
+				close(fakeBBS.ConvergeLockStatusChan)
+			}()
+		})
+
+		JustBeforeEach(func() {
+			fakeBBS.ConvergeLockStatusChan <- false
+		})
+
+		It("does not start the process", func() {
+			Consistently(ranRunner).ShouldNot(Receive())
+		})
+
+		Context("and the process is interrupted", func() {
+			JustBeforeEach(func() {
+				process.Signal(os.Interrupt)
+			})
+
+			It("exits successfully", func() {
+				err := <-process.Wait()
+				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 	})
