@@ -40,8 +40,8 @@ var kickPendingTaskDuration = flag.Duration(
 	"the interval, in seconds, between kicks to pending tasks",
 )
 
-var expireClaimedTaskDuration = flag.Duration(
-	"expireClaimedTaskDuration",
+var expirePendingTaskDuration = flag.Duration(
+	"expirePendingTaskDuration",
 	30*time.Minute,
 	"unclaimed tasks are marked as failed, after this time (in seconds)",
 )
@@ -72,7 +72,7 @@ func main() {
 		logger,
 		*convergeRepeatInterval,
 		*kickPendingTaskDuration,
-		*expireClaimedTaskDuration,
+		*expirePendingTaskDuration,
 		*kickPendingLRPStartAuctionDuration,
 		*expireClaimedLRPStartAuctionDuration,
 	)

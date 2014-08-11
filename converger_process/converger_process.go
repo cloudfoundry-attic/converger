@@ -17,7 +17,7 @@ type ConvergerProcess struct {
 	logger                          lager.Logger
 	convergeRepeatInterval          time.Duration
 	kickPendingTaskDuration         time.Duration
-	expireClaimedTaskDuration       time.Duration
+	expirePendingTaskDuration       time.Duration
 	kickPendingLRPAuctionDuration   time.Duration
 	expireClaimedLRPAuctionDuration time.Duration
 	closeOnce                       *sync.Once
@@ -28,7 +28,7 @@ func New(
 	logger lager.Logger,
 	convergeRepeatInterval,
 	kickPendingTaskDuration,
-	expireClaimedTaskDuration,
+	expirePendingTaskDuration,
 	kickPendingLRPAuctionDuration,
 	expireClaimedLRPAuctionDuration time.Duration,
 ) *ConvergerProcess {
@@ -44,7 +44,7 @@ func New(
 		logger:                          logger,
 		convergeRepeatInterval:          convergeRepeatInterval,
 		kickPendingTaskDuration:         kickPendingTaskDuration,
-		expireClaimedTaskDuration:       expireClaimedTaskDuration,
+		expirePendingTaskDuration:       expirePendingTaskDuration,
 		kickPendingLRPAuctionDuration:   kickPendingLRPAuctionDuration,
 		expireClaimedLRPAuctionDuration: expireClaimedLRPAuctionDuration,
 		closeOnce:                       &sync.Once{},
@@ -63,7 +63,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 
 		case <-ticker.C:
 			tickLog := c.logger.Session("converge-tick", lager.Data{
-				"expire-claimed-task-duration": c.expireClaimedTaskDuration.String(),
+				"expire-pending-task-duration": c.expirePendingTaskDuration.String(),
 				"kick-pending-task-duration":   c.kickPendingTaskDuration.String(),
 			})
 
@@ -76,7 +76,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 				tickLog.Info("starting-tasks")
 				defer tickLog.Info("finished-tasks")
 
-				c.bbs.ConvergeTask(c.expireClaimedTaskDuration, c.kickPendingTaskDuration)
+				c.bbs.ConvergeTask(c.expirePendingTaskDuration, c.kickPendingTaskDuration)
 			}()
 
 			wg.Add(1)
