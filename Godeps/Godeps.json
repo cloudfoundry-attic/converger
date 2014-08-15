@@ -1,8 +1,8 @@
 {
 	"ImportPath": "github.com/cloudfoundry-incubator/converger",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.3.1",
 	"Packages": [
-		"./..."
+		"gihub.com/.."
 	],
 	"Deps": [
 		{
@@ -19,11 +19,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "98ff0a2a8557f7f7137752922c402d7d439b91a9"
+			"Rev": "f3555bc4b9c7335ac742d2ced612b02e62248279"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "98ff0a2a8557f7f7137752922c402d7d439b91a9"
+			"Rev": "f3555bc4b9c7335ac742d2ced612b02e62248279"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
@@ -31,7 +31,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "a697022fe6e9677a6bb5eae8544de042ba0d7365"
+			"Rev": "652efe1a1fcf3fdb5b08d7474594eb250be6009c"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
@@ -58,7 +58,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "af08fa508af584a5dcce105e889a21ab44181351"
+			"Rev": "a1984d06355987f4587cb524918ad5c31c1a3e1d"
 		}
 	]
 }
