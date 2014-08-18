@@ -46,6 +46,7 @@ func (r *groupRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	processes := []ifrit.Process{}
 	exitTrace := make(ExitTrace, 0, len(r.members))
 	exitEvents := make(chan ExitEvent)
+	shutdown := false
 
 	for _, member := range r.members {
 		process := ifrit.Envoke(member)
@@ -65,18 +66,25 @@ func (r *groupRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	for {
 		select {
 		case sig := <-signals:
+			shutdown = true
 			for _, process := range processes {
 				process.Signal(sig)
 			}
+
 		case exit := <-exitEvents:
 			exitTrace = append(exitTrace, exit)
 
-			for _, process := range processes {
-				process.Signal(os.Interrupt)
-			}
-
 			if len(exitTrace) == len(r.members) {
 				return exitTrace.ToError()
+			}
+
+			if shutdown {
+				break
+			}
+
+			shutdown = true
+			for _, process := range processes {
+				process.Signal(os.Interrupt)
 			}
 		}
 	}

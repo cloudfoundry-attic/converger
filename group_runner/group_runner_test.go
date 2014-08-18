@@ -133,6 +133,12 @@ var _ = Describe("GroupRunner", func() {
 				Eventually(signal2).Should(Receive(Equal(syscall.SIGUSR2)))
 				Eventually(signal3).Should(Receive(Equal(syscall.SIGUSR2)))
 			})
+
+			It("doesn't send any more signals to remaining child processes", func() {
+				Eventually(signal3).Should(Receive(Equal(syscall.SIGUSR2)))
+				childRunner2Errors <- nil
+				Consistently(signal3).ShouldNot(Receive())
+			})
 		})
 
 		Describe("when a process exits cleanly", func() {
@@ -142,14 +148,22 @@ var _ = Describe("GroupRunner", func() {
 
 			It("sends an interrupt signal to the other processes", func() {
 				Eventually(signal2).Should(Receive(Equal(os.Interrupt)))
-			})
-
-			It("does not send another signal to the process that already exited", func() {
-				Consistently(signal1, Δ).ShouldNot(Receive())
+				Eventually(signal3).Should(Receive(Equal(os.Interrupt)))
 			})
 
 			It("does not exit", func() {
 				Consistently(groupProcess.Wait(), Δ).ShouldNot(Receive())
+			})
+
+			Describe("when another process exits", func() {
+				BeforeEach(func() {
+					Eventually(signal3).Should(Receive(Equal(os.Interrupt)))
+					childRunner2Errors <- nil
+				})
+
+				It("doesn't send any more signals to remaining child processes", func() {
+					Consistently(signal3).ShouldNot(Receive())
+				})
 			})
 
 			Describe("when all of the processes have exited cleanly", func() {
