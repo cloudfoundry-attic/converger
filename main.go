@@ -9,16 +9,19 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
-	"github.com/cloudfoundry-incubator/converger/locker"
+	"github.com/cloudfoundry-incubator/converger/group_runner"
 	"github.com/cloudfoundry-incubator/converger/lrpreprocessor"
 	"github.com/cloudfoundry-incubator/converger/lrpwatcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/runtime-schema/heartbeater"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
+	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
@@ -63,9 +66,17 @@ func main() {
 
 	logger := cf_lager.New("converger")
 
-	bbs := initializeBbs(logger)
+	etcdAdapter := initializeStore(logger)
+	bbs := Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 
 	cf_debug_server.Run()
+
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		logger.Fatal("Couldn't generate uuid", err)
+	}
+
+	heartbeater := heartbeater.New(etcdAdapter, shared.LockSchemaPath("converge_lock"), uuid.String(), *convergeRepeatInterval, logger)
 
 	converger := converger_process.New(
 		bbs,
@@ -79,19 +90,17 @@ func main() {
 
 	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(bbs), logger)
 
-	monitor := ifrit.Envoke(sigmon.New(ifrit.Envoke(&locker.LockedRunner{
-		HeartbeatInterval: *convergeRepeatInterval,
-		BBS:               bbs,
-		Logger:            logger,
-		Runner: grouper.RunGroup{
-			"converger": converger,
-			"watcher":   watcher,
-		},
-	})))
-
 	logger.Info("started")
 
-	err := <-monitor.Wait()
+	monitor := sigmon.New(ifrit.Envoke(group_runner.New([]group_runner.Member{
+		{"heartbeater", heartbeater},
+		{"converger", converger},
+		{"watcher", watcher},
+	})))
+
+	process := ifrit.Envoke(monitor)
+
+	err = <-process.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)
@@ -100,7 +109,7 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeBbs(logger lager.Logger) Bbs.ConvergerBBS {
+func initializeStore(logger lager.Logger) storeadapter.StoreAdapter {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
@@ -111,5 +120,5 @@ func initializeBbs(logger lager.Logger) Bbs.ConvergerBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	return etcdAdapter
 }

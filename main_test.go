@@ -244,7 +244,6 @@ var _ = Describe("Main", func() {
 	Context("when the converger loses the lock", func() {
 		BeforeEach(func() {
 			startConverger()
-			time.Sleep(heartbeatInterval)
 			err := etcdClient.Update(storeadapter.StoreNode{
 				Key:   shared.LockSchemaPath("converge_lock"),
 				Value: []byte("something-else"),
@@ -256,8 +255,8 @@ var _ = Describe("Main", func() {
 
 		itIsInactive()
 
-		It("exits cleanly", func() {
-			Eventually(runner.Session.ExitCode).Should(Equal(0))
+		It("exits with an error", func() {
+			Eventually(runner.Session.ExitCode).Should(Equal(1))
 		})
 	})
 
