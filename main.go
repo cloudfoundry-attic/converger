@@ -92,11 +92,11 @@ func main() {
 
 	logger.Info("started")
 
-	monitor := sigmon.New(ifrit.Envoke(group_runner.New([]group_runner.Member{
+	monitor := sigmon.New(group_runner.New([]group_runner.Member{
 		{"heartbeater", heartbeater},
 		{"converger", converger},
 		{"watcher", watcher},
-	})))
+	}))
 
 	process := ifrit.Envoke(monitor)
 
