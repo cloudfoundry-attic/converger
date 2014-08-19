@@ -12,11 +12,9 @@ import (
 	"github.com/cloudfoundry-incubator/converger/lrpreprocessor"
 	"github.com/cloudfoundry-incubator/converger/lrpwatcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
-	"github.com/cloudfoundry-incubator/runtime-schema/heartbeater"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/nu7hatch/gouuid"
@@ -31,10 +29,16 @@ var etcdCluster = flag.String(
 	"comma-separated list of etcd addresses (http://ip:port)",
 )
 
+var heartbeatInterval = flag.Duration(
+	"heartbeatInterval",
+	lock_bbs.HEARTBEAT_INTERVAL,
+	"the interval between heartbeats to the lock",
+)
+
 var convergeRepeatInterval = flag.Duration(
 	"convergeRepeatInterval",
 	30*time.Second,
-	"the interval, in seconds, between runs of the converge process",
+	"the interval between runs of the converge process",
 )
 
 var kickPendingTaskDuration = flag.Duration(
@@ -66,8 +70,7 @@ func main() {
 
 	logger := cf_lager.New("converger")
 
-	etcdAdapter := initializeStore(logger)
-	bbs := Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	bbs := initializeBBS(logger)
 
 	cf_debug_server.Run()
 
@@ -76,7 +79,7 @@ func main() {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	heartbeater := heartbeater.New(etcdAdapter, shared.LockSchemaPath("converge_lock"), uuid.String(), *convergeRepeatInterval, logger)
+	heartbeater := bbs.NewConvergeLock(uuid.String(), *heartbeatInterval)
 
 	converger := converger_process.New(
 		bbs,
@@ -111,7 +114,7 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeStore(logger lager.Logger) storeadapter.StoreAdapter {
+func initializeBBS(logger lager.Logger) Bbs.ConvergerBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
@@ -122,5 +125,5 @@ func initializeStore(logger lager.Logger) storeadapter.StoreAdapter {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return etcdAdapter
+	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 }

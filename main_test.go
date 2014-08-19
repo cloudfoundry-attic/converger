@@ -34,7 +34,7 @@ var _ = Describe("Main", func() {
 
 		etcdClient storeadapter.StoreAdapter
 
-		heartbeatInterval = time.Second
+		convergeRepeatInterval = time.Second
 	)
 
 	BeforeSuite(func() {
@@ -85,8 +85,8 @@ var _ = Describe("Main", func() {
 	})
 
 	startConverger := func() {
-		runner.Start(heartbeatInterval, taskKickInterval, 30*time.Minute, 30*time.Second, 300*time.Second)
-		time.Sleep(heartbeatInterval)
+		runner.Start(convergeRepeatInterval, taskKickInterval, 30*time.Minute, 30*time.Second, 300*time.Second)
+		time.Sleep(convergeRepeatInterval)
 	}
 
 	createClaimedTaskWithDeadExecutor := func() {
@@ -250,7 +250,7 @@ var _ = Describe("Main", func() {
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			time.Sleep(heartbeatInterval + 10*time.Millisecond)
+			time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
 		})
 
 		itIsInactive()
@@ -278,7 +278,7 @@ var _ = Describe("Main", func() {
 				err := etcdClient.Delete(shared.LockSchemaPath("converge_lock"))
 				Ω(err).ShouldNot(HaveOccurred())
 
-				time.Sleep(heartbeatInterval + 10*time.Millisecond)
+				time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
 			})
 
 			Describe("when an LRP is desired", func() {

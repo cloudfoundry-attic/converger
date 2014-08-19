@@ -49,6 +49,7 @@ func (r *ConvergerRunner) Start(
 			"-expirePendingTaskDuration", expirePendingTaskDuration.String(),
 			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
 			"-expireClaimedLRPStartAuctionDuration", expireClaimedLRPStartAuctionDuration.String(),
+			"-heartbeatInterval", "1s",
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
