@@ -30,8 +30,12 @@
 			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry/gunk/group_runner",
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "2bb7ab04e15bdae68f68e4aa7ef79b43a371e088"
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
@@ -62,7 +66,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "82bc852c28d76c55d89bb16ffa2fe2240e5cc9ad"
+			"Rev": "6f0cbd69e732e9c44be9f3a92b6a398ede3ca611"
 		}
 	]
 }
