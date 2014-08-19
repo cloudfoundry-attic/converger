@@ -96,9 +96,11 @@ func main() {
 		{"watcher", watcher},
 	}))
 
+	logger.Info("started-waiting-for-lock")
+
 	process := ifrit.Envoke(monitor)
 
-	logger.Info("started")
+	logger.Info("acquired-lock")
 
 	err = <-process.Wait()
 	if err != nil {
