@@ -90,8 +90,6 @@ func main() {
 
 	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(bbs), logger)
 
-	logger.Info("started")
-
 	monitor := sigmon.New(group_runner.New([]group_runner.Member{
 		{"heartbeater", heartbeater},
 		{"converger", converger},
@@ -99,6 +97,8 @@ func main() {
 	}))
 
 	process := ifrit.Envoke(monitor)
+
+	logger.Info("started")
 
 	err = <-process.Wait()
 	if err != nil {
