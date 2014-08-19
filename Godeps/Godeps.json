@@ -2,7 +2,7 @@
 	"ImportPath": "github.com/cloudfoundry-incubator/converger",
 	"GoVersion": "go1.3.1",
 	"Packages": [
-		"gihub.com/.."
+		"./..."
 	],
 	"Deps": [
 		{
@@ -19,11 +19,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "f3555bc4b9c7335ac742d2ced612b02e62248279"
+			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
+			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "f3555bc4b9c7335ac742d2ced612b02e62248279"
+			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
@@ -58,7 +62,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "a1984d06355987f4587cb524918ad5c31c1a3e1d"
+			"Rev": "82bc852c28d76c55d89bb16ffa2fe2240e5cc9ad"
 		}
 	]
 }
