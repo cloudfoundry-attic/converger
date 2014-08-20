@@ -2,22 +2,22 @@ package main_test
 
 import (
 	"fmt"
+	"os"
 	"syscall"
 	"time"
 
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
-	"github.com/cloudfoundry/storeadapter/test_helpers"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
@@ -28,7 +28,7 @@ var _ = Describe("Main", func() {
 		bbs        *Bbs.BBS
 		runner     *converger_runner.ConvergerRunner
 
-		fileServerPresence services_bbs.Presence
+		fileServerPresence ifrit.Process
 
 		taskKickInterval = 1 * time.Second
 
@@ -59,11 +59,7 @@ var _ = Describe("Main", func() {
 	BeforeEach(func() {
 		etcdRunner.Start()
 
-		var err error
-		var presenceStatus <-chan bool
-		fileServerPresence, presenceStatus, err = bbs.MaintainFileServerPresence(time.Second, "http://some.file.server", "file-server-id")
-		Ω(err).ShouldNot(HaveOccurred())
-		Eventually(presenceStatus).Should(Receive(BeTrue()))
+		fileServerPresence = ifrit.Envoke(bbs.NewFileServerHeartbeat("http://some.file.server", "file-server-id", time.Second))
 
 		executorPresence := models.ExecutorPresence{
 			ExecutorID: "the-executor-id",
@@ -74,12 +70,12 @@ var _ = Describe("Main", func() {
 			Key:   shared.ExecutorSchemaPath(executorPresence.ExecutorID),
 			Value: executorPresence.ToJSON(),
 		})
-
-		test_helpers.NewStatusReporter(presenceStatus)
 	})
 
 	AfterEach(func() {
-		fileServerPresence.Remove()
+		fileServerPresence.Signal(os.Interrupt)
+		Eventually(fileServerPresence.Wait()).Should(Receive(BeNil()))
+
 		runner.KillWithFire()
 		etcdRunner.Stop()
 	})
