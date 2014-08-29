@@ -37,7 +37,11 @@ var _ = Describe("Main", func() {
 		convergeRepeatInterval = time.Second
 	)
 
-	BeforeSuite(func() {
+	SynchronizedBeforeSuite(func() []byte {
+		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger", "-race")
+		Ω(err).ShouldNot(HaveOccurred())
+		return []byte(convergerBinPath)
+	}, func(convergerBinPath []byte) {
 		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
 		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
@@ -45,14 +49,12 @@ var _ = Describe("Main", func() {
 		etcdClient = etcdRunner.Adapter()
 		bbs = Bbs.NewBBS(etcdClient, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 
-		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger", "-race")
-		Ω(err).ShouldNot(HaveOccurred())
-
-		runner = converger_runner.New(convergerBinPath, etcdCluster, "info")
+		runner = converger_runner.New(string(convergerBinPath), etcdCluster, "info")
 	})
 
-	AfterSuite(func() {
+	SynchronizedAfterSuite(func() {
 		etcdRunner.Stop()
+	}, func() {
 		gexec.CleanupBuildArtifacts()
 	})
 
