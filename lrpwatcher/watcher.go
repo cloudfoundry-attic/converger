@@ -8,6 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/delta_force/delta_force"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry/dropsonde/autowire/metrics"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 )
@@ -126,6 +127,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			InstanceGuid: instanceGuid.String(),
 		}
 
+		metrics.IncrementCounter("request-lrp-start-index")
 		err = watcher.bbs.RequestLRPStartAuction(startMessage)
 
 		if err != nil {
@@ -144,6 +146,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 
 		actualToStop := instanceGuidToActual[guidToStop]
 
+		metrics.IncrementCounter("request-lrp-stop-instance")
 		err = watcher.bbs.RequestStopLRPInstance(models.StopLRPInstance{
 			ProcessGuid:  actualToStop.ProcessGuid,
 			InstanceGuid: actualToStop.InstanceGuid,
@@ -163,6 +166,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"desired-app-message":  desiredLRP,
 			"stop-duplicate-index": indexToStopAllButOne,
 		})
+		metrics.IncrementCounter("request-lrp-stop-index")
 		err = watcher.bbs.RequestLRPStopAuction(models.LRPStopAuction{
 			ProcessGuid: desiredLRP.ProcessGuid,
 			Index:       indexToStopAllButOne,
