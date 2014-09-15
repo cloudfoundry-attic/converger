@@ -23,15 +23,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "387ba1e0992f0a777db05d1634b9b8d835dc6c0f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "387ba1e0992f0a777db05d1634b9b8d835dc6c0f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "387ba1e0992f0a777db05d1634b9b8d835dc6c0f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/dropsonde",
@@ -65,8 +65,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Comment": "v1.0-4-gc9914be",
-			"Rev": "c9914bed6a0c5fd914a6d3ca57c59c5935a5cfd0"
+			"Comment": "v1.0-6-g1224b95",
+			"Rev": "1224b954d632bccc9b85d92362809f7774d2f8c4"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",

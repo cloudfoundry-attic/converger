@@ -5,9 +5,16 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager"
+)
+
+const (
+	convergeTasksCounter = metric.Counter("converge-tasks")
+	casTaskCounter       = metric.Counter("compare-and-swap-task")
+	pruneTaskCounter     = metric.Counter("prune-task")
 )
 
 type compareAndSwappableTask struct {
@@ -36,6 +43,7 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 		return
 	}
 
+	convergeTasksCounter.Increment()
 	taskLog := bbs.logger.Session("converge-tasks")
 
 	logError := func(task models.Task, message string) {
@@ -102,7 +110,10 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 		}
 	}
 
+	casTaskCounter.Add(uint64(len(tasksToCAS)))
 	bbs.batchCompareAndSwapTasks(tasksToCAS)
+
+	pruneTaskCounter.Add(uint64(len(tasksToCAS)))
 	bbs.store.Delete(keysToDelete...)
 }
 

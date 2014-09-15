@@ -6,9 +6,18 @@ import (
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/prune"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager"
+)
+
+const (
+	convergeLrpStartCounter     = metric.Counter("converge-lrp-start-auction")
+	pruneInvalidLrpStartCounter = metric.Counter("prune-invalid-lrp-start-auction")
+	pruneClaimedLrpStartCounter = metric.Counter("prune-claimed-lrp-start-auction")
+	pruneStartCounter           = metric.Counter("prune-start-auction-failed")
+	casLrpStartCounter          = metric.Counter("compare-and-swap-lrp-start-auction")
 )
 
 type compareAndSwappableLRPStartAuction struct {
@@ -17,6 +26,7 @@ type compareAndSwappableLRPStartAuction struct {
 }
 
 func (bbs *StartAuctionBBS) ConvergeLRPStartAuctions(kickPendingDuration time.Duration, expireClaimedDuration time.Duration) {
+	convergeLrpStartCounter.Increment()
 	auctionsToCAS := []compareAndSwappableLRPStartAuction{}
 
 	err := prune.Prune(bbs.store, shared.LRPStartAuctionSchemaRoot, func(auctionNode storeadapter.StoreNode) (shouldKeep bool) {
@@ -26,6 +36,7 @@ func (bbs *StartAuctionBBS) ConvergeLRPStartAuctions(kickPendingDuration time.Du
 				"error":   err.Error(),
 				"payload": auctionNode.Value,
 			})
+			pruneInvalidLrpStartCounter.Increment()
 			return false
 		}
 
@@ -51,6 +62,7 @@ func (bbs *StartAuctionBBS) ConvergeLRPStartAuctions(kickPendingDuration time.Du
 					"auction":             auction,
 					"expiration-duration": expireClaimedDuration,
 				})
+				pruneClaimedLrpStartCounter.Increment()
 				return false
 			}
 		}
@@ -59,10 +71,12 @@ func (bbs *StartAuctionBBS) ConvergeLRPStartAuctions(kickPendingDuration time.Du
 	})
 
 	if err != nil {
-		bbs.logger.Error("failed-to-prune-start-auctions", err)
+		pruneStartCounter.Increment()
+		bbs.logger.Error("failed-to-prune-start-auction", err)
 		return
 	}
 
+	casLrpStartCounter.Add(uint64(len(auctionsToCAS)))
 	bbs.batchCompareAndSwapLRPStartAuctions(auctionsToCAS)
 }
 

@@ -6,9 +6,18 @@ import (
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/prune"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager"
+)
+
+const (
+	convergeLrpStopCounter     = metric.Counter("converge-lrp-stop-auction")
+	pruneInvalidLrpStopCounter = metric.Counter("prune-invalid-lrp-stop-auction")
+	pruneClaimedLrpStopCounter = metric.Counter("prune-claimed-lrp-stop-auction")
+	pruneStopFailedCounter     = metric.Counter("prune-stop-auction-failed")
+	casLrpStopCounter          = metric.Counter("compare-and-swap-lrp-stop-auction")
 )
 
 type compareAndSwappableLRPStopAuction struct {
@@ -17,6 +26,7 @@ type compareAndSwappableLRPStopAuction struct {
 }
 
 func (bbs *StopAuctionBBS) ConvergeLRPStopAuctions(kickPendingDuration time.Duration, expireClaimedDuration time.Duration) {
+	convergeLrpStopCounter.Increment()
 	auctionsToCAS := []compareAndSwappableLRPStopAuction{}
 
 	err := prune.Prune(bbs.store, shared.LRPStopAuctionSchemaRoot, func(auctionNode storeadapter.StoreNode) (shouldKeep bool) {
@@ -26,6 +36,7 @@ func (bbs *StopAuctionBBS) ConvergeLRPStopAuctions(kickPendingDuration time.Dura
 				"error":   err.Error(),
 				"payload": auctionNode.Value,
 			})
+			pruneInvalidLrpStopCounter.Increment()
 			return false
 		}
 
@@ -51,6 +62,7 @@ func (bbs *StopAuctionBBS) ConvergeLRPStopAuctions(kickPendingDuration time.Dura
 					"auction":             auction,
 					"expiration-duration": expireClaimedDuration,
 				})
+				pruneClaimedLrpStopCounter.Increment()
 				return false
 			}
 		}
@@ -59,10 +71,12 @@ func (bbs *StopAuctionBBS) ConvergeLRPStopAuctions(kickPendingDuration time.Dura
 	})
 
 	if err != nil {
+		pruneStopFailedCounter.Increment()
 		bbs.logger.Error("failed-to-prune-stop-auctions", err)
 		return
 	}
 
+	casLrpStopCounter.Add(uint64(len(auctionsToCAS)))
 	bbs.batchCompareAndSwapLRPStopAuctions(auctionsToCAS)
 }
 

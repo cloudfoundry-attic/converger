@@ -29,6 +29,8 @@ type RepBBS interface {
 	CompleteTask(taskGuid string, failed bool, failureReason string, result string) error
 
 	///lrp
+	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
+	GetAllActualLRPsByExecutorID(executorID string) ([]models.ActualLRP, error)
 	ReportActualLRPAsStarting(processGuid, instanceGuid, executorID string, index int) (models.ActualLRP, error)
 	ReportActualLRPAsRunning(lrp models.ActualLRP, executorId string) error
 	RemoveActualLRP(lrp models.ActualLRP) error
@@ -114,6 +116,8 @@ type MetricsBBS interface {
 
 	//lrps
 	GetAllFreshness() ([]string, error)
+	GetAllDesiredLRPs() ([]models.DesiredLRP, error)
+	GetAllActualLRPs() ([]models.ActualLRP, error)
 }
 
 type FileServerBBS interface {
