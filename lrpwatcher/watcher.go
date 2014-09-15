@@ -7,13 +7,19 @@ import (
 
 	"github.com/cloudfoundry-incubator/delta_force/delta_force"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/dropsonde/autowire/metrics"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 )
 
 var ErrNoHealthCheckDefined = errors.New("no health check defined for stack")
+
+const (
+	lrpStartIndexCounter   = metric.Counter("request-lrp-start-index")
+	lrpStopIndexCounter    = metric.Counter("request-lrp-stop-index")
+	lrpStopInstanceCounter = metric.Counter("request-stop-instance")
+)
 
 type LRPreProcessor interface {
 	PreProcess(lrp models.DesiredLRP, instanceIndex int, instanceGuid string) (models.DesiredLRP, error)
@@ -127,7 +133,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			InstanceGuid: instanceGuid.String(),
 		}
 
-		metrics.IncrementCounter("request-lrp-start-index")
+		lrpStartIndexCounter.Increment()
 		err = watcher.bbs.RequestLRPStartAuction(startMessage)
 
 		if err != nil {
@@ -146,7 +152,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 
 		actualToStop := instanceGuidToActual[guidToStop]
 
-		metrics.IncrementCounter("request-lrp-stop-instance")
+		lrpStopInstanceCounter.Increment()
 		err = watcher.bbs.RequestStopLRPInstance(models.StopLRPInstance{
 			ProcessGuid:  actualToStop.ProcessGuid,
 			InstanceGuid: actualToStop.InstanceGuid,
@@ -166,7 +172,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"desired-app-message":  desiredLRP,
 			"stop-duplicate-index": indexToStopAllButOne,
 		})
-		metrics.IncrementCounter("request-lrp-stop-index")
+		lrpStopIndexCounter.Increment()
 		err = watcher.bbs.RequestLRPStopAuction(models.LRPStopAuction{
 			ProcessGuid: desiredLRP.ProcessGuid,
 			Index:       indexToStopAllButOne,
