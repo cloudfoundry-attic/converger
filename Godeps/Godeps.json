@@ -30,6 +30,10 @@
 			"Rev": "387ba1e0992f0a777db05d1634b9b8d835dc6c0f"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/metric",
+			"Rev": "387ba1e0992f0a777db05d1634b9b8d835dc6c0f"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
 			"Rev": "387ba1e0992f0a777db05d1634b9b8d835dc6c0f"
 		},
