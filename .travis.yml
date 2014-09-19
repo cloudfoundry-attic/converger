@@ -9,7 +9,6 @@ install:
   - curl -L https://github.com/coreos/etcd/releases/download/v0.4.6/etcd-v0.4.6-linux-amd64.tar.gz | tar zxf - -C /tmp
   - mv /tmp/etcd-v0.4.6-linux-amd64/etcd $HOME/gopath/bin
   - go get github.com/apcera/gnatsd
-
-script:
   - export PATH=$HOME/gopath/bin:$PATH
-  - ginkgo -r -failOnPending -randomizeAllSpecs -race
+
+script: ginkgo -r -race -failOnPending -randomizeAllSpecs
