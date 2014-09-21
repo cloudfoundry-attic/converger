@@ -152,10 +152,10 @@ var _ = Describe("Main", func() {
 	}
 
 	Context("when the converger has the lock", func() {
-		BeforeEach(startConverger)
+		JustBeforeEach(startConverger)
 
 		Describe("when an LRP is desired", func() {
-			JustBeforeEach(desireLRP)
+			BeforeEach(desireLRP)
 
 			Context("for an app that is not running at all", func() {
 				It("desires N start auctions in the BBS", func() {
