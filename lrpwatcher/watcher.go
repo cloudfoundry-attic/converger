@@ -134,8 +134,8 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		}
 
 		lrpStartIndexCounter.Increment()
-		err = watcher.bbs.RequestLRPStartAuction(startMessage)
 
+		err = watcher.bbs.RequestLRPStartAuction(startMessage)
 		if err != nil {
 			changeLogger.Error("request-start-auction-failed", err, lager.Data{
 				"desired-app-message": desiredLRP,
@@ -172,7 +172,9 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"desired-app-message":  desiredLRP,
 			"stop-duplicate-index": indexToStopAllButOne,
 		})
+
 		lrpStopIndexCounter.Increment()
+
 		err = watcher.bbs.RequestLRPStopAuction(models.LRPStopAuction{
 			ProcessGuid: desiredLRP.ProcessGuid,
 			Index:       indexToStopAllButOne,

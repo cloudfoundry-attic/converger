@@ -8,6 +8,8 @@ import (
 	"github.com/cloudfoundry-incubator/converger/lrpwatcher/fakes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry/dropsonde/autowire/metrics"
+	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
@@ -18,6 +20,8 @@ import (
 
 var _ = Describe("Watcher", func() {
 	var (
+		sender *fake.FakeMetricSender
+
 		bbs                       *fake_bbs.FakeConvergerBBS
 		lrpp                      *fakes.FakeLRPreProcessor
 		logger                    *lagertest.TestLogger
@@ -40,6 +44,9 @@ var _ = Describe("Watcher", func() {
 		logger = lagertest.NewTestLogger("test")
 
 		lrpp = new(fakes.FakeLRPreProcessor)
+
+		sender = fake.NewFakeMetricSender()
+		metrics.Initialize(sender)
 
 		watcherRunner := New(bbs, lrpp, logger)
 
@@ -190,6 +197,11 @@ var _ = Describe("Watcher", func() {
 				Ω(firstStartAuction.Index).Should(Equal(0))
 				Ω(secondStartAuction.Index).Should(Equal(1))
 			})
+
+			It("increases the lrp start counter", func() {
+				Eventually(bbs.GetLRPStartAuctions).Should(HaveLen(2))
+				Ω(sender.GetCounter("request-lrp-start-index")).Should(Equal(uint64(2)))
+			})
 		})
 
 		Context("when preprocessing fails", func() {
@@ -318,6 +330,11 @@ var _ = Describe("Watcher", func() {
 				Ω(stopInstances).Should(ContainElement(stopInstance1))
 				Ω(stopInstances).Should(ContainElement(stopInstance2))
 			})
+
+			It("increases the lrp stop counter", func() {
+				Eventually(bbs.GetStopLRPInstances).Should(HaveLen(2))
+				Ω(sender.GetCounter("request-lrp-stop-instance")).Should(Equal(uint64(2)))
+			})
 		})
 
 		Context("when there are duplicate desired instances running for the desired app", func() {
@@ -407,6 +424,11 @@ var _ = Describe("Watcher", func() {
 
 				Ω(stopInstances).Should(ContainElement(stopInstance1))
 				Ω(stopInstances).Should(ContainElement(stopInstance2))
+			})
+
+			It("increases the lrp stop counter", func() {
+				Eventually(bbs.GetStopLRPInstances).Should(HaveLen(2))
+				Ω(sender.GetCounter("request-lrp-stop-index")).Should(Equal(uint64(2)))
 			})
 		})
 	})
