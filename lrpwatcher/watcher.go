@@ -16,9 +16,9 @@ import (
 var ErrNoHealthCheckDefined = errors.New("no health check defined for stack")
 
 const (
-	lrpStartIndexCounter   = metric.Counter("request-lrp-start-index")
-	lrpStopIndexCounter    = metric.Counter("request-lrp-stop-index")
-	lrpStopInstanceCounter = metric.Counter("request-lrp-stop-instance")
+	lrpStartIndexCounter   = metric.Counter("LRPStartIndexRequests")
+	lrpStopIndexCounter    = metric.Counter("LRPStopIndexRequests")
+	lrpStopInstanceCounter = metric.Counter("LRPStopInstanceRequests")
 )
 
 type LRPreProcessor interface {

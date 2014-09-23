@@ -200,7 +200,7 @@ var _ = Describe("Watcher", func() {
 
 			It("increases the lrp start counter", func() {
 				Eventually(bbs.GetLRPStartAuctions).Should(HaveLen(2))
-				Ω(sender.GetCounter("request-lrp-start-index")).Should(Equal(uint64(2)))
+				Ω(sender.GetCounter("LRPStartIndexRequests")).Should(Equal(uint64(2)))
 			})
 		})
 
@@ -331,9 +331,9 @@ var _ = Describe("Watcher", func() {
 				Ω(stopInstances).Should(ContainElement(stopInstance2))
 			})
 
-			It("increases the lrp stop counter", func() {
+			It("increases the lrp stop instance counter", func() {
 				Eventually(bbs.GetStopLRPInstances).Should(HaveLen(2))
-				Ω(sender.GetCounter("request-lrp-stop-instance")).Should(Equal(uint64(2)))
+				Ω(sender.GetCounter("LRPStopInstanceRequests")).Should(Equal(uint64(2)))
 			})
 		})
 
@@ -428,7 +428,7 @@ var _ = Describe("Watcher", func() {
 
 			It("increases the lrp stop counter", func() {
 				Eventually(bbs.GetStopLRPInstances).Should(HaveLen(2))
-				Ω(sender.GetCounter("request-lrp-stop-index")).Should(Equal(uint64(2)))
+				Ω(sender.GetCounter("LRPStopIndexRequests")).Should(Equal(uint64(2)))
 			})
 		})
 	})
