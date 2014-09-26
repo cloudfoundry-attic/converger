@@ -14,13 +14,13 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
-	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
@@ -94,15 +94,15 @@ func main() {
 
 	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(bbs), logger)
 
-	monitor := sigmon.New(group_runner.New([]group_runner.Member{
+	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"heartbeater", heartbeater},
 		{"converger", converger},
 		{"watcher", watcher},
-	}))
+	})
 
 	logger.Info("started-waiting-for-lock")
 
-	process := ifrit.Envoke(monitor)
+	process := ifrit.Envoke(sigmon.New(group))
 
 	logger.Info("acquired-lock")
 
