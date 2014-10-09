@@ -22,7 +22,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
-var _ = Describe("Main", func() {
+var _ = Describe("Converger", func() {
 	var (
 		etcdRunner *etcdstorerunner.ETCDClusterRunner
 		bbs        *Bbs.BBS
