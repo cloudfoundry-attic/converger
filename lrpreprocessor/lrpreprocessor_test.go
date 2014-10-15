@@ -39,9 +39,8 @@ var _ = Describe("LRPreProcessor", func() {
 			Actions: []models.ExecutorAction{
 				{
 					Action: models.DownloadAction{
-						From:    "PLACEHOLDER_FILESERVER_URL/some-download/path",
-						To:      "/tmp/some-download",
-						Extract: true,
+						From: "PLACEHOLDER_FILESERVER_URL/some-download/path",
+						To:   "/tmp/some-download",
 					},
 				},
 				models.Parallel(
@@ -88,9 +87,8 @@ var _ = Describe("LRPreProcessor", func() {
 			Actions: []models.ExecutorAction{
 				{
 					Action: models.DownloadAction{
-						From:    "http://some-fake-file-server/some-download/path",
-						To:      "/tmp/some-download",
-						Extract: true,
+						From: "http://some-fake-file-server/some-download/path",
+						To:   "/tmp/some-download",
 					},
 				},
 				models.Parallel(
