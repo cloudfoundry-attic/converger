@@ -91,8 +91,8 @@ var _ = Describe("Converger", func() {
 		task := models.Task{
 			Domain: "tests",
 
-			Guid:  "task-guid",
-			Stack: "stack",
+			TaskGuid: "task-guid",
+			Stack:    "stack",
 			Actions: []models.ExecutorAction{
 				{
 					Action: models.RunAction{
@@ -106,7 +106,7 @@ var _ = Describe("Converger", func() {
 		err := bbs.DesireTask(task)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = bbs.ClaimTask(task.Guid, "dead-executor")
+		err = bbs.ClaimTask(task.TaskGuid, "dead-executor")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
