@@ -48,16 +48,16 @@ var kickPendingTaskDuration = flag.Duration(
 	"the interval, in seconds, between kicks to pending tasks",
 )
 
+var expireCompletedTaskDuration = flag.Duration(
+	"expireCompletedTaskDuration",
+	120*time.Second,
+	"completed, unresolved tasks are deleted after this duration",
+)
+
 var expirePendingTaskDuration = flag.Duration(
 	"expirePendingTaskDuration",
 	30*time.Minute,
 	"unclaimed tasks are marked as failed, after this duration",
-)
-
-var expireCompletedTaskDuration = flag.Duration(
-	"expireCompletedTaskDuration",
-	60*time.Minute,
-	"unresolved tasks are deleted, after this duration",
 )
 
 var kickPendingLRPStartAuctionDuration = flag.Duration(
