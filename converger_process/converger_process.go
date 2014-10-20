@@ -18,6 +18,7 @@ type ConvergerProcess struct {
 	convergeRepeatInterval          time.Duration
 	kickPendingTaskDuration         time.Duration
 	expirePendingTaskDuration       time.Duration
+	expireCompletedTaskDuration     time.Duration
 	kickPendingLRPAuctionDuration   time.Duration
 	expireClaimedLRPAuctionDuration time.Duration
 	closeOnce                       *sync.Once
@@ -29,6 +30,7 @@ func New(
 	convergeRepeatInterval,
 	kickPendingTaskDuration,
 	expirePendingTaskDuration,
+	expireCompletedTaskDuration,
 	kickPendingLRPAuctionDuration,
 	expireClaimedLRPAuctionDuration time.Duration,
 ) *ConvergerProcess {
@@ -45,6 +47,7 @@ func New(
 		convergeRepeatInterval:          convergeRepeatInterval,
 		kickPendingTaskDuration:         kickPendingTaskDuration,
 		expirePendingTaskDuration:       expirePendingTaskDuration,
+		expireCompletedTaskDuration:     expireCompletedTaskDuration,
 		kickPendingLRPAuctionDuration:   kickPendingLRPAuctionDuration,
 		expireClaimedLRPAuctionDuration: expireClaimedLRPAuctionDuration,
 		closeOnce:                       &sync.Once{},
@@ -76,7 +79,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 				tickLog.Info("starting-tasks")
 				defer tickLog.Info("finished-tasks")
 
-				c.bbs.ConvergeTask(c.expirePendingTaskDuration, c.kickPendingTaskDuration)
+				c.bbs.ConvergeTask(c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
 			}()
 
 			wg.Add(1)

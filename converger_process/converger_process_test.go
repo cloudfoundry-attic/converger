@@ -22,6 +22,7 @@ var _ = Describe("ConvergerProcess", func() {
 	var convergeRepeatInterval time.Duration
 	var kickPendingTaskDuration time.Duration
 	var expirePendingTaskDuration time.Duration
+	var expireCompletedTaskDuration time.Duration
 	var kickPendingLRPStartAuctionDuration time.Duration
 	var expireClaimedLRPStartAuctionDuration time.Duration
 
@@ -35,10 +36,20 @@ var _ = Describe("ConvergerProcess", func() {
 
 		kickPendingTaskDuration = 10 * time.Millisecond
 		expirePendingTaskDuration = 30 * time.Second
+		expireCompletedTaskDuration = 60 * time.Minute
 		kickPendingLRPStartAuctionDuration = 30 * time.Second
 		expireClaimedLRPStartAuctionDuration = 300 * time.Second
 
-		process = ifrit.Envoke(converger_process.New(fakeBBS, logger, convergeRepeatInterval, kickPendingTaskDuration, expirePendingTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration))
+		process = ifrit.Invoke(
+			converger_process.New(
+				fakeBBS,
+				logger,
+				convergeRepeatInterval,
+				kickPendingTaskDuration,
+				expirePendingTaskDuration,
+				expireCompletedTaskDuration,
+				kickPendingLRPStartAuctionDuration,
+				expireClaimedLRPStartAuctionDuration))
 	})
 
 	AfterEach(func() {

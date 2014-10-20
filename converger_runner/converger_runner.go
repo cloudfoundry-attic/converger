@@ -32,7 +32,7 @@ func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
 }
 
 func (r *ConvergerRunner) Start(
-	convergeRepeatInterval, kickPendingTaskDuration, expirePendingTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration,
+	convergeRepeatInterval, kickPendingTaskDuration, expirePendingTaskDuration, expireCompletedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration,
 ) {
 
 	if r.Session != nil {
@@ -47,6 +47,7 @@ func (r *ConvergerRunner) Start(
 			"-convergeRepeatInterval", convergeRepeatInterval.String(),
 			"-kickPendingTaskDuration", kickPendingTaskDuration.String(),
 			"-expirePendingTaskDuration", expirePendingTaskDuration.String(),
+			"-expireCompletedTaskDuration", expireCompletedTaskDuration.String(),
 			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
 			"-expireClaimedLRPStartAuctionDuration", expireClaimedLRPStartAuctionDuration.String(),
 			"-heartbeatInterval", "1s",

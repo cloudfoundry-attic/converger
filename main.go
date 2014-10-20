@@ -51,19 +51,25 @@ var kickPendingTaskDuration = flag.Duration(
 var expirePendingTaskDuration = flag.Duration(
 	"expirePendingTaskDuration",
 	30*time.Minute,
-	"unclaimed tasks are marked as failed, after this time (in seconds)",
+	"unclaimed tasks are marked as failed, after this duration",
+)
+
+var expireCompletedTaskDuration = flag.Duration(
+	"expireCompletedTaskDuration",
+	60*time.Minute,
+	"unresolved tasks are deleted, after this duration",
 )
 
 var kickPendingLRPStartAuctionDuration = flag.Duration(
 	"kickPendingLRPStartAuctionDuration",
 	30*time.Second,
-	"the interval, in seconds, between kicks to pending start auctions for long-running process",
+	"the interval between kicks to pending start auctions for long-running process",
 )
 
 var expireClaimedLRPStartAuctionDuration = flag.Duration(
 	"expireClaimedLRPStartAuctionDuration",
 	300*time.Second,
-	"unclaimed start auctions for long-running processes are deleted, after this time (in seconds)",
+	"unclaimed start auctions for long-running processes are deleted, after this interval",
 )
 
 func main() {
@@ -88,6 +94,7 @@ func main() {
 		*convergeRepeatInterval,
 		*kickPendingTaskDuration,
 		*expirePendingTaskDuration,
+		*expireCompletedTaskDuration,
 		*kickPendingLRPStartAuctionDuration,
 		*expireClaimedLRPStartAuctionDuration,
 	)
@@ -102,7 +109,7 @@ func main() {
 
 	logger.Info("started-waiting-for-lock")
 
-	process := ifrit.Envoke(sigmon.New(group))
+	process := ifrit.Invoke(sigmon.New(group))
 
 	logger.Info("acquired-lock")
 

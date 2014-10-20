@@ -32,6 +32,8 @@ var _ = Describe("Converger", func() {
 
 		taskKickInterval = 1 * time.Second
 
+		expireCompletedTaskDuration = 3 * time.Second
+
 		etcdClient storeadapter.StoreAdapter
 
 		convergeRepeatInterval = time.Second
@@ -83,7 +85,7 @@ var _ = Describe("Converger", func() {
 	})
 
 	startConverger := func() {
-		runner.Start(convergeRepeatInterval, taskKickInterval, 30*time.Minute, 30*time.Second, 300*time.Second)
+		runner.Start(convergeRepeatInterval, taskKickInterval, 30*time.Minute, expireCompletedTaskDuration, 30*time.Second, 300*time.Second)
 		time.Sleep(convergeRepeatInterval)
 	}
 
@@ -228,13 +230,34 @@ var _ = Describe("Converger", func() {
 		Describe("when a claimed task with a dead executor is present", func() {
 			JustBeforeEach(createClaimedTaskWithDeadExecutor)
 
-			It("eventually marks the task as failed", func() {
+			It("marks the task as failed after the kick interval", func() {
 				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
 				tasks, err := bbs.GetAllTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))
 				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))
 				Ω(tasks[0].Failed).Should(BeTrue())
+			})
+
+			It("deletes the task after the 'expire completed task' interval", func() {
+				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
+				tasks, err := bbs.GetAllTasks()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(tasks).Should(HaveLen(1))
+				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))
+				Ω(tasks[0].Failed).Should(BeTrue())
+
+				guid := tasks[0].TaskGuid
+				_, err = bbs.GetTaskByGuid(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				getTaskError := func() error {
+					_, err := bbs.GetTaskByGuid(guid)
+					return err
+				}
+
+				Consistently(getTaskError, expireCompletedTaskDuration-time.Second).ShouldNot(HaveOccurred())
+				Eventually(getTaskError, expireCompletedTaskDuration+time.Second).Should(Equal(storeadapter.ErrorKeyNotFound))
 			})
 		})
 	})
