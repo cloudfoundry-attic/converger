@@ -40,7 +40,7 @@ var _ = Describe("Converger", func() {
 	)
 
 	SynchronizedBeforeSuite(func() []byte {
-		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger", "-race")
+		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
 		Ω(err).ShouldNot(HaveOccurred())
 		return []byte(convergerBinPath)
 	}, func(convergerBinPath []byte) {
