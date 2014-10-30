@@ -161,10 +161,6 @@ var _ = Describe("Watcher", func() {
 
 		Describe("the happy path", func() {
 			BeforeEach(func() {
-				bbs.WhenGettingAvailableFileServer = func() (string, error) {
-					return "http://file-server.com/", nil
-				}
-
 				lrpp.PreProcessStub = func(lrp models.DesiredLRP, index int, guid string) (models.DesiredLRP, error) {
 					lrp.ProcessGuid = "preprocessed-" + lrp.ProcessGuid
 					return lrp, nil

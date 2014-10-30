@@ -99,7 +99,7 @@ func main() {
 		*expireClaimedLRPStartAuctionDuration,
 	)
 
-	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(bbs), logger)
+	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(), logger)
 
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"heartbeater", heartbeater},

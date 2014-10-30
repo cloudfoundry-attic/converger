@@ -2,7 +2,6 @@ package main_test
 
 import (
 	"fmt"
-	"os"
 	"syscall"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -27,8 +25,6 @@ var _ = Describe("Converger", func() {
 		etcdRunner *etcdstorerunner.ETCDClusterRunner
 		bbs        *Bbs.BBS
 		runner     *converger_runner.ConvergerRunner
-
-		fileServerPresence ifrit.Process
 
 		taskKickInterval = 1 * time.Second
 
@@ -63,8 +59,6 @@ var _ = Describe("Converger", func() {
 	BeforeEach(func() {
 		etcdRunner.Start()
 
-		fileServerPresence = ifrit.Envoke(bbs.NewFileServerHeartbeat("http://some.file.server", "file-server-id", time.Second))
-
 		executorPresence := models.ExecutorPresence{
 			ExecutorID: "the-executor-id",
 			Stack:      "the-stack",
@@ -77,9 +71,6 @@ var _ = Describe("Converger", func() {
 	})
 
 	AfterEach(func() {
-		fileServerPresence.Signal(os.Interrupt)
-		Eventually(fileServerPresence.Wait()).Should(Receive(BeNil()))
-
 		runner.KillWithFire()
 		etcdRunner.Stop()
 	})

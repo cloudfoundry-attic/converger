@@ -1,10 +1,7 @@
 package lrpreprocessor_test
 
 import (
-	"errors"
-
 	. "github.com/cloudfoundry-incubator/converger/lrpreprocessor"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
@@ -13,7 +10,6 @@ import (
 
 var _ = Describe("LRPreProcessor", func() {
 	var (
-		bbs                 *fake_bbs.FakeConvergerBBS
 		lrpp                *LRPreProcessor
 		lrpWithPlaceholders models.DesiredLRP
 		expectedLRP         models.DesiredLRP
@@ -22,8 +18,7 @@ var _ = Describe("LRPreProcessor", func() {
 	)
 
 	BeforeEach(func() {
-		bbs = fake_bbs.NewFakeConvergerBBS()
-		lrpp = New(bbs)
+		lrpp = New()
 
 		lrpWithPlaceholders = models.DesiredLRP{
 			Domain:      "some-domain",
@@ -39,7 +34,7 @@ var _ = Describe("LRPreProcessor", func() {
 			Actions: []models.ExecutorAction{
 				{
 					Action: models.DownloadAction{
-						From: "PLACEHOLDER_FILESERVER_URL/some-download/path",
+						From: "http://some-fake-file-server/some-download/path",
 						To:   "/tmp/some-download",
 					},
 				},
@@ -126,27 +121,11 @@ var _ = Describe("LRPreProcessor", func() {
 		preProcessedLRP, preProcessErr = lrpp.PreProcess(lrpWithPlaceholders, 2, "some-instance-guid")
 	})
 
-	Context("when a file server is available", func() {
-		It("replaces all placeholders with their actual values", func() {
-			Ω(preProcessedLRP.Actions[1]).Should(Equal(expectedLRP.Actions[1]))
-		})
-
-		It("does not return an error", func() {
-			Ω(preProcessErr).ShouldNot(HaveOccurred())
-		})
+	It("replaces all placeholders with their actual values", func() {
+		Ω(preProcessedLRP.Actions).Should(Equal(expectedLRP.Actions))
 	})
 
-	Context("when no file servers are available", func() {
-		var expectedErr = errors.New("ahhhh!")
-
-		BeforeEach(func() {
-			bbs.FileServerGetter.WhenGettingAvailableFileServer = func() (string, error) {
-				return "", expectedErr
-			}
-		})
-
-		It("returns an error", func() {
-			Ω(preProcessErr).Should(Equal(expectedErr))
-		})
+	It("does not return an error", func() {
+		Ω(preProcessErr).ShouldNot(HaveOccurred())
 	})
 })
