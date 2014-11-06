@@ -13,7 +13,7 @@ import (
 	"github.com/cloudfoundry-incubator/converger/lrpwatcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
-	_ "github.com/cloudfoundry/dropsonde/autowire"
+	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -72,10 +72,24 @@ var expireClaimedLRPStartAuctionDuration = flag.Duration(
 	"unclaimed start auctions for long-running processes are deleted, after this interval",
 )
 
+var dropsondeOrigin = flag.String(
+	"dropsondeOrigin",
+	"converger",
+	"Origin identifier for dropsonde-emitted metrics.",
+)
+
+var dropsondeDestination = flag.String(
+	"dropsondeDestination",
+	"localhost:3457",
+	"Destination for dropsonde-emitted metrics.",
+)
+
 func main() {
 	flag.Parse()
 
 	logger := cf_lager.New("converger")
+
+	initializeDropsonde(logger)
 
 	bbs := initializeBBS(logger)
 
@@ -134,4 +148,11 @@ func initializeBBS(logger lager.Logger) Bbs.ConvergerBBS {
 	}
 
 	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+}
+
+func initializeDropsonde(logger lager.Logger) {
+	err := dropsonde.Initialize(*dropsondeOrigin, *dropsondeDestination)
+	if err != nil {
+		logger.Error("failed to initialize dropsonde: %v", err)
+	}
 }
