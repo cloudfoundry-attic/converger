@@ -158,11 +158,13 @@ var _ = Describe("Converger", func() {
 
 			Context("for an app that is missing instances", func() {
 				BeforeEach(func() {
-					bbs.ReportActualLRPAsRunning(models.ActualLRP{
+					err := bbs.ReportActualLRPAsRunning(models.ActualLRP{
 						ProcessGuid:  "the-guid",
 						InstanceGuid: "a",
+						Domain:       "the-domain",
 						Index:        0,
 					}, "the-executor-id")
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 
 				It("start auctions for the missing instances", func() {
@@ -180,29 +182,37 @@ var _ = Describe("Converger", func() {
 
 			Context("for an app that has extra instances", func() {
 				BeforeEach(func() {
-					bbs.ReportActualLRPAsRunning(models.ActualLRP{
+					err := bbs.ReportActualLRPAsRunning(models.ActualLRP{
 						ProcessGuid:  "the-guid",
 						InstanceGuid: "a",
+						Domain:       "the-domain",
 						Index:        0,
 					}, "the-executor-id")
+					Ω(err).ShouldNot(HaveOccurred())
 
-					bbs.ReportActualLRPAsRunning(models.ActualLRP{
+					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
 						ProcessGuid:  "the-guid",
 						InstanceGuid: "b",
+						Domain:       "the-domain",
 						Index:        1,
 					}, "the-executor-id")
+					Ω(err).ShouldNot(HaveOccurred())
 
-					bbs.ReportActualLRPAsRunning(models.ActualLRP{
+					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
 						ProcessGuid:  "the-guid",
 						InstanceGuid: "c",
+						Domain:       "the-domain",
 						Index:        2,
 					}, "the-executor-id")
+					Ω(err).ShouldNot(HaveOccurred())
 
-					bbs.ReportActualLRPAsRunning(models.ActualLRP{
+					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
 						ProcessGuid:  "the-guid",
 						InstanceGuid: "d-extra",
+						Domain:       "the-domain",
 						Index:        3,
 					}, "the-executor-id")
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 
 				It("stops the extra instances", func() {
