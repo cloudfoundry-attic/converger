@@ -21,25 +21,15 @@ const (
 	lrpStopInstanceCounter = metric.Counter("LRPStopInstanceRequests")
 )
 
-type LRPreProcessor interface {
-	PreProcess(lrp models.DesiredLRP, instanceIndex int, instanceGuid string) (models.DesiredLRP, error)
-}
-
 type Watcher struct {
-	bbs            Bbs.ConvergerBBS
-	lrPreProcessor LRPreProcessor
-	logger         lager.Logger
+	bbs    Bbs.ConvergerBBS
+	logger lager.Logger
 }
 
-func New(
-	bbs Bbs.ConvergerBBS,
-	lrPreProcessor LRPreProcessor,
-	logger lager.Logger,
-) Watcher {
+func New(bbs Bbs.ConvergerBBS, logger lager.Logger) Watcher {
 	return Watcher{
-		bbs:            bbs,
-		lrPreProcessor: lrPreProcessor,
-		logger:         logger.Session("watcher"),
+		bbs:    bbs,
+		logger: logger.Session("watcher"),
 	}
 }
 
@@ -120,14 +110,8 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			return
 		}
 
-		preprocessedLRP, err := watcher.lrPreProcessor.PreProcess(desiredLRP, lrpIndex, instanceGuid.String())
-		if err != nil {
-			changeLogger.Error("failed-to-preprocess-lrp", err)
-			return
-		}
-
 		startMessage := models.LRPStartAuction{
-			DesiredLRP: preprocessedLRP,
+			DesiredLRP: desiredLRP,
 
 			Index:        lrpIndex,
 			InstanceGuid: instanceGuid.String(),

@@ -115,11 +115,9 @@ var _ = Describe("Converger", func() {
 			MemoryMB:  128,
 			DiskMB:    512,
 
-			Actions: []models.ExecutorAction{
-				{
-					Action: models.RunAction{
-						Path: "the-start-command",
-					},
+			Action: &models.ExecutorAction{
+				Action: models.RunAction{
+					Path: "the-start-command",
 				},
 			},
 		})

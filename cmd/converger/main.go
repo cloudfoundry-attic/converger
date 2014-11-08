@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
-	"github.com/cloudfoundry-incubator/converger/lrpreprocessor"
 	"github.com/cloudfoundry-incubator/converger/lrpwatcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
@@ -113,7 +112,7 @@ func main() {
 		*expireClaimedLRPStartAuctionDuration,
 	)
 
-	watcher := lrpwatcher.New(bbs, lrpreprocessor.New(), logger)
+	watcher := lrpwatcher.New(bbs, logger)
 
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"heartbeater", heartbeater},

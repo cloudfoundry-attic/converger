@@ -5,7 +5,6 @@ import (
 	"syscall"
 
 	. "github.com/cloudfoundry-incubator/converger/lrpwatcher"
-	"github.com/cloudfoundry-incubator/converger/lrpwatcher/fakes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
@@ -23,7 +22,6 @@ var _ = Describe("Watcher", func() {
 		sender *fake.FakeMetricSender
 
 		bbs                       *fake_bbs.FakeConvergerBBS
-		lrpp                      *fakes.FakeLRPreProcessor
 		logger                    *lagertest.TestLogger
 		desiredLRP                models.DesiredLRP
 		repAddrRelativeToExecutor string
@@ -43,12 +41,10 @@ var _ = Describe("Watcher", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		lrpp = new(fakes.FakeLRPreProcessor)
-
 		sender = fake.NewFakeMetricSender()
 		metrics.Initialize(sender)
 
-		watcherRunner := New(bbs, lrpp, logger)
+		watcherRunner := New(bbs, logger)
 
 		desiredLRP = models.DesiredLRP{
 			Domain:      "some-domain",
@@ -57,11 +53,9 @@ var _ = Describe("Watcher", func() {
 			Instances: 2,
 			Stack:     "some-stack",
 
-			Actions: []models.ExecutorAction{
-				{
-					Action: models.RunAction{
-						Path: "some-run-action-path",
-					},
+			Action: &models.ExecutorAction{
+				Action: models.RunAction{
+					Path: "some-run-action-path",
 				},
 			},
 		}
@@ -160,24 +154,17 @@ var _ = Describe("Watcher", func() {
 		})
 
 		Describe("the happy path", func() {
-			BeforeEach(func() {
-				lrpp.PreProcessStub = func(lrp models.DesiredLRP, index int, guid string) (models.DesiredLRP, error) {
-					lrp.ProcessGuid = "preprocessed-" + lrp.ProcessGuid
-					return lrp, nil
-				}
-			})
-
-			It("puts a LRPStartAuction in the bbs with a preprocessed LRP", func() {
+			It("puts a LRPStartAuction in the bbs with the desired LRP", func() {
 				Eventually(bbs.GetLRPStartAuctions).Should(HaveLen(2))
 
 				startAuctions := bbs.GetLRPStartAuctions()
 
 				firstStartAuction := startAuctions[0]
-				Ω(firstStartAuction.DesiredLRP.ProcessGuid).Should(Equal("preprocessed-the-app-guid-the-app-version"))
+				Ω(firstStartAuction.DesiredLRP.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
 				Ω(firstStartAuction.InstanceGuid).ShouldNot(BeEmpty())
 
 				secondStartAuction := startAuctions[1]
-				Ω(secondStartAuction.DesiredLRP.ProcessGuid).Should(Equal("preprocessed-the-app-guid-the-app-version"))
+				Ω(secondStartAuction.DesiredLRP.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
 				Ω(secondStartAuction.InstanceGuid).ShouldNot(BeEmpty())
 
 				Ω(firstStartAuction.InstanceGuid).ShouldNot(Equal(secondStartAuction.InstanceGuid))
@@ -197,16 +184,6 @@ var _ = Describe("Watcher", func() {
 			It("increases the lrp start counter", func() {
 				Eventually(bbs.GetLRPStartAuctions).Should(HaveLen(2))
 				Ω(sender.GetCounter("LRPStartIndexRequests")).Should(Equal(uint64(2)))
-			})
-		})
-
-		Context("when preprocessing fails", func() {
-			BeforeEach(func() {
-				lrpp.PreProcessReturns(models.DesiredLRP{}, errors.New("oh no!"))
-			})
-
-			It("does not put a LRPStartAuction in the bbs", func() {
-				Consistently(bbs.GetLRPStartAuctions).Should(BeEmpty())
 			})
 		})
 
