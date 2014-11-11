@@ -26,10 +26,8 @@ var _ = Describe("LRPreProcessor", func() {
 
 			Stack: "some-stack",
 
-			Log: models.LogConfig{
-				Guid:       "some-log-guid",
-				SourceName: "App",
-			},
+			LogGuid:   "some-log-guid",
+			LogSource: "App",
 
 			Actions: []models.ExecutorAction{
 				{
@@ -74,10 +72,8 @@ var _ = Describe("LRPreProcessor", func() {
 
 			Stack: "some-stack",
 
-			Log: models.LogConfig{
-				Guid:       "some-log-guid",
-				SourceName: "App",
-			},
+			LogGuid:   "some-log-guid",
+			LogSource: "App",
 
 			Actions: []models.ExecutorAction{
 				{
