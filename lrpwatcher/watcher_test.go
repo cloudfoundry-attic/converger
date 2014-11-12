@@ -53,7 +53,7 @@ var _ = Describe("Watcher", func() {
 			Instances: 2,
 			Stack:     "some-stack",
 
-			Action: &models.ExecutorAction{
+			Action: models.ExecutorAction{
 				Action: models.RunAction{
 					Path: "some-run-action-path",
 				},

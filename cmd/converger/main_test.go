@@ -86,12 +86,10 @@ var _ = Describe("Converger", func() {
 
 			TaskGuid: "task-guid",
 			Stack:    "stack",
-			Actions: []models.ExecutorAction{
-				{
-					Action: models.RunAction{
-						Path: "cat",
-						Args: []string{"/tmp/file"},
-					},
+			Action: models.ExecutorAction{
+				Action: models.RunAction{
+					Path: "cat",
+					Args: []string{"/tmp/file"},
 				},
 			},
 		}
@@ -115,7 +113,7 @@ var _ = Describe("Converger", func() {
 			MemoryMB:  128,
 			DiskMB:    512,
 
-			Action: &models.ExecutorAction{
+			Action: models.ExecutorAction{
 				Action: models.RunAction{
 					Path: "the-start-command",
 				},
