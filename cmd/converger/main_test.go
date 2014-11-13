@@ -59,14 +59,14 @@ var _ = Describe("Converger", func() {
 	BeforeEach(func() {
 		etcdRunner.Start()
 
-		executorPresence := models.ExecutorPresence{
-			ExecutorID: "the-executor-id",
-			Stack:      "the-stack",
+		cellPresence := models.CellPresence{
+			CellID: "the-cell-id",
+			Stack:  "the-stack",
 		}
 
 		etcdClient.Create(storeadapter.StoreNode{
-			Key:   shared.ExecutorSchemaPath(executorPresence.ExecutorID),
-			Value: executorPresence.ToJSON(),
+			Key:   shared.CellSchemaPath(cellPresence.CellID),
+			Value: cellPresence.ToJSON(),
 		})
 	})
 
@@ -80,7 +80,7 @@ var _ = Describe("Converger", func() {
 		time.Sleep(convergeRepeatInterval)
 	}
 
-	createClaimedTaskWithDeadExecutor := func() {
+	createClaimedTaskWithDeadCell := func() {
 		task := models.Task{
 			Domain: "tests",
 
@@ -97,7 +97,7 @@ var _ = Describe("Converger", func() {
 		err := bbs.DesireTask(task)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = bbs.ClaimTask(task.TaskGuid, "dead-executor")
+		err = bbs.ClaimTask(task.TaskGuid, "dead-cell")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
@@ -131,8 +131,8 @@ var _ = Describe("Converger", func() {
 			})
 		})
 
-		Context("when a claimed task with a dead executor is present", func() {
-			JustBeforeEach(createClaimedTaskWithDeadExecutor)
+		Context("when a claimed task with a dead cell is present", func() {
+			JustBeforeEach(createClaimedTaskWithDeadCell)
 
 			It("does not change the task", func() {
 				Consistently(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(BeEmpty())
@@ -159,7 +159,7 @@ var _ = Describe("Converger", func() {
 						InstanceGuid: "a",
 						Domain:       "the-domain",
 						Index:        0,
-					}, "the-executor-id")
+					}, "the-cell-id")
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 
@@ -183,7 +183,7 @@ var _ = Describe("Converger", func() {
 						InstanceGuid: "a",
 						Domain:       "the-domain",
 						Index:        0,
-					}, "the-executor-id")
+					}, "the-cell-id")
 					Ω(err).ShouldNot(HaveOccurred())
 
 					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
@@ -191,7 +191,7 @@ var _ = Describe("Converger", func() {
 						InstanceGuid: "b",
 						Domain:       "the-domain",
 						Index:        1,
-					}, "the-executor-id")
+					}, "the-cell-id")
 					Ω(err).ShouldNot(HaveOccurred())
 
 					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
@@ -199,7 +199,7 @@ var _ = Describe("Converger", func() {
 						InstanceGuid: "c",
 						Domain:       "the-domain",
 						Index:        2,
-					}, "the-executor-id")
+					}, "the-cell-id")
 					Ω(err).ShouldNot(HaveOccurred())
 
 					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
@@ -207,7 +207,7 @@ var _ = Describe("Converger", func() {
 						InstanceGuid: "d-extra",
 						Domain:       "the-domain",
 						Index:        3,
-					}, "the-executor-id")
+					}, "the-cell-id")
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 
@@ -224,8 +224,8 @@ var _ = Describe("Converger", func() {
 			})
 		})
 
-		Describe("when a claimed task with a dead executor is present", func() {
-			JustBeforeEach(createClaimedTaskWithDeadExecutor)
+		Describe("when a claimed task with a dead cell is present", func() {
+			JustBeforeEach(createClaimedTaskWithDeadCell)
 
 			It("marks the task as failed after the kick interval", func() {
 				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
@@ -309,8 +309,8 @@ var _ = Describe("Converger", func() {
 				})
 			})
 
-			Describe("when a claimed task with a dead executor is present", func() {
-				JustBeforeEach(createClaimedTaskWithDeadExecutor)
+			Describe("when a claimed task with a dead cell is present", func() {
+				JustBeforeEach(createClaimedTaskWithDeadCell)
 
 				It("eventually marks the task as failed", func() {
 					Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))

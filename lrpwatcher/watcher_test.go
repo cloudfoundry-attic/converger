@@ -21,11 +21,11 @@ var _ = Describe("Watcher", func() {
 	var (
 		sender *fake.FakeMetricSender
 
-		bbs                       *fake_bbs.FakeConvergerBBS
-		logger                    *lagertest.TestLogger
-		desiredLRP                models.DesiredLRP
-		repAddrRelativeToExecutor string
-		healthChecks              map[string]string
+		bbs                   *fake_bbs.FakeConvergerBBS
+		logger                *lagertest.TestLogger
+		desiredLRP            models.DesiredLRP
+		repAddrRelativeToCell string
+		healthChecks          map[string]string
 
 		watcher ifrit.Process
 	)
@@ -33,7 +33,7 @@ var _ = Describe("Watcher", func() {
 	BeforeEach(func() {
 		bbs = fake_bbs.NewFakeConvergerBBS()
 
-		repAddrRelativeToExecutor = "127.0.0.1:20515"
+		repAddrRelativeToCell = "127.0.0.1:20515"
 
 		healthChecks = map[string]string{
 			"some-stack": "some-health-check.tgz",
