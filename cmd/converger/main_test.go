@@ -127,7 +127,7 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(desireLRP)
 
 			It("does not create start auctions for apps that are missing instances", func() {
-				Consistently(bbs.GetAllLRPStartAuctions, 0.5).Should(BeEmpty())
+				Consistently(bbs.LRPStartAuctions, 0.5).Should(BeEmpty())
 			})
 		})
 
@@ -148,7 +148,7 @@ var _ = Describe("Converger", func() {
 
 			Context("for an app that is not running at all", func() {
 				It("desires N start auctions in the BBS", func() {
-					Eventually(bbs.GetAllLRPStartAuctions, 0.5).Should(HaveLen(3))
+					Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(3))
 				})
 			})
 
@@ -164,15 +164,15 @@ var _ = Describe("Converger", func() {
 				})
 
 				It("start auctions for the missing instances", func() {
-					Eventually(bbs.GetAllLRPStartAuctions, 0.5).Should(HaveLen(2))
-					auctions, err := bbs.GetAllLRPStartAuctions()
+					Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(2))
+					auctions, err := bbs.LRPStartAuctions()
 					Ω(err).ShouldNot(HaveOccurred())
 
 					indices := []int{auctions[0].Index, auctions[1].Index}
 					Ω(indices).Should(ContainElement(1))
 					Ω(indices).Should(ContainElement(2))
 
-					Consistently(bbs.GetAllLRPStartAuctions).Should(HaveLen(2))
+					Consistently(bbs.LRPStartAuctions).Should(HaveLen(2))
 				})
 			})
 
@@ -212,9 +212,9 @@ var _ = Describe("Converger", func() {
 				})
 
 				It("stops the extra instances", func() {
-					Consistently(bbs.GetAllLRPStartAuctions, 0.5).Should(BeEmpty())
-					Eventually(bbs.GetAllStopLRPInstances).Should(HaveLen(1))
-					stopInstances, err := bbs.GetAllStopLRPInstances()
+					Consistently(bbs.LRPStartAuctions, 0.5).Should(BeEmpty())
+					Eventually(bbs.StopLRPInstances).Should(HaveLen(1))
+					stopInstances, err := bbs.StopLRPInstances()
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(stopInstances[0].ProcessGuid).Should(Equal("the-guid"))
@@ -229,7 +229,7 @@ var _ = Describe("Converger", func() {
 
 			It("marks the task as failed after the kick interval", func() {
 				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
-				tasks, err := bbs.GetAllTasks()
+				tasks, err := bbs.Tasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))
 				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))
@@ -238,18 +238,18 @@ var _ = Describe("Converger", func() {
 
 			It("deletes the task after the 'expire completed task' interval", func() {
 				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
-				tasks, err := bbs.GetAllTasks()
+				tasks, err := bbs.Tasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))
 				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))
 				Ω(tasks[0].Failed).Should(BeTrue())
 
 				guid := tasks[0].TaskGuid
-				_, err = bbs.GetTaskByGuid(guid)
+				_, err = bbs.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				getTaskError := func() error {
-					_, err := bbs.GetTaskByGuid(guid)
+					_, err := bbs.TaskByGuid(guid)
 					return err
 				}
 
@@ -304,7 +304,7 @@ var _ = Describe("Converger", func() {
 
 				Context("for an app that is not running at all", func() {
 					It("desires N start auctions in the BBS", func() {
-						Eventually(bbs.GetAllLRPStartAuctions, 0.5).Should(HaveLen(3))
+						Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(3))
 					})
 				})
 			})

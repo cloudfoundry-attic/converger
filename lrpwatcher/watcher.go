@@ -175,7 +175,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 
 func (watcher Watcher) actualsForProcessGuid(lrpGuid string) (delta_force.ActualInstances, map[string]models.ActualLRP, error) {
 	actualInstances := delta_force.ActualInstances{}
-	actualLRPs, err := watcher.bbs.GetActualLRPsByProcessGuid(lrpGuid)
+	actualLRPs, err := watcher.bbs.ActualLRPsByProcessGuid(lrpGuid)
 	instanceGuidToActual := map[string]models.ActualLRP{}
 
 	if err != nil {
