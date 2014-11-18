@@ -64,9 +64,11 @@ var _ = Describe("Converger", func() {
 			Stack:  "the-stack",
 		}
 
+		value, err := models.ToJSON(cellPresence)
+		Ω(err).ShouldNot(HaveOccurred())
 		etcdClient.Create(storeadapter.StoreNode{
 			Key:   shared.CellSchemaPath(cellPresence.CellID),
-			Value: cellPresence.ToJSON(),
+			Value: value,
 		})
 	})
 
@@ -86,11 +88,9 @@ var _ = Describe("Converger", func() {
 
 			TaskGuid: "task-guid",
 			Stack:    "stack",
-			Action: models.ExecutorAction{
-				Action: models.RunAction{
-					Path: "cat",
-					Args: []string{"/tmp/file"},
-				},
+			Action: &models.RunAction{
+				Path: "cat",
+				Args: []string{"/tmp/file"},
 			},
 		}
 
@@ -113,10 +113,8 @@ var _ = Describe("Converger", func() {
 			MemoryMB:  128,
 			DiskMB:    512,
 
-			Action: models.ExecutorAction{
-				Action: models.RunAction{
-					Path: "the-start-command",
-				},
+			Action: &models.RunAction{
+				Path: "the-start-command",
 			},
 		})
 		Ω(err).ShouldNot(HaveOccurred())
