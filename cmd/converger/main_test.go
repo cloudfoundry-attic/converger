@@ -133,7 +133,7 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(createClaimedTaskWithDeadCell)
 
 			It("does not change the task", func() {
-				Consistently(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(BeEmpty())
+				Consistently(bbs.CompletedTasks, taskKickInterval*2).Should(BeEmpty())
 			})
 		})
 	}
@@ -226,7 +226,7 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(createClaimedTaskWithDeadCell)
 
 			It("marks the task as failed after the kick interval", func() {
-				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
+				Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
 				tasks, err := bbs.Tasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))
@@ -235,7 +235,7 @@ var _ = Describe("Converger", func() {
 			})
 
 			It("deletes the task after the 'expire completed task' interval", func() {
-				Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
+				Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
 				tasks, err := bbs.Tasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks).Should(HaveLen(1))
@@ -311,7 +311,7 @@ var _ = Describe("Converger", func() {
 				JustBeforeEach(createClaimedTaskWithDeadCell)
 
 				It("eventually marks the task as failed", func() {
-					Eventually(bbs.GetAllCompletedTasks, taskKickInterval*2).Should(HaveLen(1))
+					Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
 				})
 			})
 		})
