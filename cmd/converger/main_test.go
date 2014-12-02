@@ -16,6 +16,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
@@ -252,7 +253,7 @@ var _ = Describe("Converger", func() {
 				}
 
 				Consistently(getTaskError, expireCompletedTaskDuration-time.Second).ShouldNot(HaveOccurred())
-				Eventually(getTaskError, expireCompletedTaskDuration+time.Second).Should(Equal(storeadapter.ErrorKeyNotFound))
+				Eventually(getTaskError, expireCompletedTaskDuration+time.Second).Should(Equal(bbserrors.ErrStoreResourceNotFound))
 			})
 		})
 	})
