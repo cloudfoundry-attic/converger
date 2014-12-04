@@ -56,6 +56,7 @@ func New(
 
 func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	ticker := time.NewTicker(c.convergeRepeatInterval)
+	defer ticker.Stop()
 
 	close(ready)
 

@@ -110,6 +110,15 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			return
 		}
 
+		actualLRP := models.NewActualLRP(
+			desiredLRP.ProcessGuid,
+			"",
+			"",
+			desiredLRP.Domain,
+			lrpIndex,
+			models.ActualLRPStateUnclaimed,
+		)
+
 		startMessage := models.LRPStartAuction{
 			DesiredLRP: desiredLRP,
 
@@ -118,6 +127,15 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		}
 
 		lrpStartIndexCounter.Increment()
+
+		_, err = watcher.bbs.CreateActualLRP(actualLRP)
+		if err != nil {
+			changeLogger.Error("create-unclaimed-lrp-failed", err, lager.Data{
+				"desired-app-message": desiredLRP,
+				"index":               lrpIndex,
+			})
+			continue
+		}
 
 		err = watcher.bbs.RequestLRPStartAuction(startMessage)
 		if err != nil {
@@ -179,7 +197,7 @@ func (watcher Watcher) actualsForProcessGuid(lrpGuid string) (delta_force.Actual
 	}
 
 	for _, actualLRP := range actualLRPs {
-		actualInstances = append(actualInstances, delta_force.ActualInstance{actualLRP.Index, actualLRP.InstanceGuid})
+		actualInstances = append(actualInstances, delta_force.ActualInstance{actualLRP.Index, actualLRP.InstanceGuid, actualLRP.State})
 		instanceGuidToActual[actualLRP.InstanceGuid] = actualLRP
 	}
 

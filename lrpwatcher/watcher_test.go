@@ -163,6 +163,18 @@ var _ = Describe("Watcher", func() {
 		})
 
 		Describe("the happy path", func() {
+			It("creates ActualLRPs for the desired LRP", func() {
+				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
+
+				firstActual := bbs.CreateActualLRPArgsForCall(0)
+				Ω(firstActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
+				Ω(firstActual.Index).Should(Equal(0))
+
+				secondActual := bbs.CreateActualLRPArgsForCall(1)
+				Ω(secondActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
+				Ω(secondActual.Index).Should(Equal(1))
+			})
+
 			It("requests a LRPStartAuction with the desired LRP", func() {
 				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
 
@@ -190,6 +202,17 @@ var _ = Describe("Watcher", func() {
 			It("increases the lrp start counter", func() {
 				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
 				Ω(sender.GetCounter("LRPStartIndexRequests")).Should(Equal(uint64(2)))
+			})
+		})
+
+		Context("when there is an error creating the ActualLRP", func() {
+			BeforeEach(func() {
+				bbs.CreateActualLRPReturns(nil, errors.New("connection error"))
+			})
+
+			It("does not start an auction", func() {
+				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
+				Ω(bbs.RequestLRPStartAuctionCallCount()).Should(Equal(0))
 			})
 		})
 
@@ -222,7 +245,7 @@ var _ = Describe("Watcher", func() {
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "a",
 						Index:        0,
-						State:        models.ActualLRPStateStarting,
+						State:        models.ActualLRPStateClaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
@@ -261,13 +284,13 @@ var _ = Describe("Watcher", func() {
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "a",
 						Index:        0,
-						State:        models.ActualLRPStateStarting,
+						State:        models.ActualLRPStateClaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "b",
 						Index:        1,
-						State:        models.ActualLRPStateStarting,
+						State:        models.ActualLRPStateClaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
@@ -325,19 +348,19 @@ var _ = Describe("Watcher", func() {
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "a",
 						Index:        0,
-						State:        models.ActualLRPStateStarting,
+						State:        models.ActualLRPStateClaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "b",
 						Index:        1,
-						State:        models.ActualLRPStateStarting,
+						State:        models.ActualLRPStateClaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "c",
 						Index:        1,
-						State:        models.ActualLRPStateStarting,
+						State:        models.ActualLRPStateClaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
@@ -431,7 +454,7 @@ var _ = Describe("Watcher", func() {
 					ProcessGuid:  "the-app-guid-the-app-version",
 					InstanceGuid: "a",
 					Index:        0,
-					State:        models.ActualLRPStateStarting,
+					State:        models.ActualLRPStateClaimed,
 				},
 			}, nil)
 		})
@@ -447,7 +470,7 @@ var _ = Describe("Watcher", func() {
 				ProcessGuid:  "the-app-guid-the-app-version",
 				InstanceGuid: "a",
 				Index:        0,
-				State:        models.ActualLRPStateStarting,
+				State:        models.ActualLRPStateClaimed,
 			}))
 		})
 	})
