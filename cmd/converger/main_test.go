@@ -16,7 +16,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
@@ -129,14 +128,6 @@ var _ = Describe("Converger", func() {
 				Consistently(bbs.LRPStartAuctions, 0.5).Should(BeEmpty())
 			})
 		})
-
-		Context("when a claimed task with a dead cell is present", func() {
-			JustBeforeEach(createClaimedTaskWithDeadCell)
-
-			It("does not change the task", func() {
-				Consistently(bbs.CompletedTasks, taskKickInterval*2).Should(BeEmpty())
-			})
-		})
 	}
 
 	Context("when the converger has the lock", func() {
@@ -145,115 +136,8 @@ var _ = Describe("Converger", func() {
 		Describe("when an LRP is desired", func() {
 			BeforeEach(desireLRP)
 
-			Context("for an app that is not running at all", func() {
-				It("desires N start auctions in the BBS", func() {
-					Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(3))
-				})
-			})
-
-			Context("for an app that is missing instances", func() {
-				BeforeEach(func() {
-					err := bbs.ReportActualLRPAsRunning(models.ActualLRP{
-						ProcessGuid:  "the-guid",
-						InstanceGuid: "a",
-						Domain:       "the-domain",
-						Index:        0,
-					}, "the-cell-id")
-					Ω(err).ShouldNot(HaveOccurred())
-				})
-
-				It("start auctions for the missing instances", func() {
-					Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(2))
-					auctions, err := bbs.LRPStartAuctions()
-					Ω(err).ShouldNot(HaveOccurred())
-
-					indices := []int{auctions[0].Index, auctions[1].Index}
-					Ω(indices).Should(ContainElement(1))
-					Ω(indices).Should(ContainElement(2))
-
-					Consistently(bbs.LRPStartAuctions).Should(HaveLen(2))
-				})
-			})
-
-			Context("for an app that has extra instances", func() {
-				BeforeEach(func() {
-					err := bbs.ReportActualLRPAsRunning(models.ActualLRP{
-						ProcessGuid:  "the-guid",
-						InstanceGuid: "a",
-						Domain:       "the-domain",
-						Index:        0,
-					}, "the-cell-id")
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
-						ProcessGuid:  "the-guid",
-						InstanceGuid: "b",
-						Domain:       "the-domain",
-						Index:        1,
-					}, "the-cell-id")
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
-						ProcessGuid:  "the-guid",
-						InstanceGuid: "c",
-						Domain:       "the-domain",
-						Index:        2,
-					}, "the-cell-id")
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = bbs.ReportActualLRPAsRunning(models.ActualLRP{
-						ProcessGuid:  "the-guid",
-						InstanceGuid: "d-extra",
-						Domain:       "the-domain",
-						Index:        3,
-					}, "the-cell-id")
-					Ω(err).ShouldNot(HaveOccurred())
-				})
-
-				It("stops the extra instances", func() {
-					Consistently(bbs.LRPStartAuctions, 0.5).Should(BeEmpty())
-					Eventually(bbs.StopLRPInstances).Should(HaveLen(1))
-					stopInstances, err := bbs.StopLRPInstances()
-					Ω(err).ShouldNot(HaveOccurred())
-
-					Ω(stopInstances[0].ProcessGuid).Should(Equal("the-guid"))
-					Ω(stopInstances[0].Index).Should(Equal(3))
-					Ω(stopInstances[0].InstanceGuid).Should(Equal("d-extra"))
-				})
-			})
-		})
-
-		Describe("when a claimed task with a dead cell is present", func() {
-			JustBeforeEach(createClaimedTaskWithDeadCell)
-
-			It("marks the task as failed after the kick interval", func() {
-				Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
-				tasks, err := bbs.Tasks()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(tasks).Should(HaveLen(1))
-				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))
-				Ω(tasks[0].Failed).Should(BeTrue())
-			})
-
-			It("deletes the task after the 'expire completed task' interval", func() {
-				Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
-				tasks, err := bbs.Tasks()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(tasks).Should(HaveLen(1))
-				Ω(tasks[0].State).Should(Equal(models.TaskStateCompleted))
-				Ω(tasks[0].Failed).Should(BeTrue())
-
-				guid := tasks[0].TaskGuid
-				_, err = bbs.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				getTaskError := func() error {
-					_, err := bbs.TaskByGuid(guid)
-					return err
-				}
-
-				Consistently(getTaskError, expireCompletedTaskDuration-time.Second).ShouldNot(HaveOccurred())
-				Eventually(getTaskError, expireCompletedTaskDuration+time.Second).Should(Equal(bbserrors.ErrStoreResourceNotFound))
+			It("desires N start auctions in the BBS", func() {
+				Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(3))
 			})
 		})
 	})
