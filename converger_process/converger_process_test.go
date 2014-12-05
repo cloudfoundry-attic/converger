@@ -29,7 +29,7 @@ var _ = Describe("ConvergerProcess", func() {
 	var process ifrit.Process
 
 	BeforeEach(func() {
-		fakeBBS = fake_bbs.NewFakeConvergerBBS()
+		fakeBBS = new(fake_bbs.FakeConvergerBBS)
 		logger = lagertest.NewTestLogger("test")
 
 		convergeRepeatInterval = 1 * time.Second
@@ -58,16 +58,19 @@ var _ = Describe("ConvergerProcess", func() {
 	})
 
 	It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
-		Eventually(fakeBBS.CallsToConvergeTasks, convergeRepeatInterval+2*aBit).Should(Equal(1))
-		Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(1))
-		Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(1))
-		Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(1))
-		Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
+		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(1))
+		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(1))
+		Eventually(fakeBBS.ConvergeLRPStartAuctionsCallCount).Should(Equal(1))
+		Eventually(fakeBBS.ConvergeLRPStopAuctionsCallCount).Should(Equal(1))
 
-		Eventually(fakeBBS.CallsToConvergeTasks, convergeRepeatInterval+2*aBit).Should(Equal(2))
-		Eventually(fakeBBS.CallsToConvergeLRPs).Should(Equal(2))
-		Eventually(fakeBBS.CallsToConvergeLRPStartAuctions).Should(Equal(2))
-		Eventually(fakeBBS.CallsToConvergeLRPStopAuctions).Should(Equal(2))
-		Ω(fakeBBS.ConvergeTimeToClaimTasks()).Should(Equal(30 * time.Second))
+		timeToClaim, _, _ := fakeBBS.ConvergeTaskArgsForCall(0)
+		Ω(timeToClaim).Should(Equal(30 * time.Second))
+
+		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(2))
+		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(2))
+		Eventually(fakeBBS.ConvergeLRPStartAuctionsCallCount).Should(Equal(2))
+		Eventually(fakeBBS.ConvergeLRPStopAuctionsCallCount).Should(Equal(2))
+		timeToClaim, _, _ = fakeBBS.ConvergeTaskArgsForCall(0)
+		Ω(timeToClaim).Should(Equal(30 * time.Second))
 	})
 })

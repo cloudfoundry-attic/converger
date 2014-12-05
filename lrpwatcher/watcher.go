@@ -137,12 +137,8 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		actualToStop := instanceGuidToActual[guidToStop]
 
 		lrpStopInstanceCounter.Increment()
-		err = watcher.bbs.RequestStopLRPInstance(models.StopLRPInstance{
-			ProcessGuid:  actualToStop.ProcessGuid,
-			InstanceGuid: actualToStop.InstanceGuid,
-			Index:        actualToStop.Index,
-		})
 
+		err = watcher.bbs.RequestStopLRPInstance(actualToStop)
 		if err != nil {
 			changeLogger.Error("request-stop-instance-failed", err, lager.Data{
 				"desired-app-message": desiredLRP,
