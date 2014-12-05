@@ -82,7 +82,7 @@ var _ = Describe("Converger", func() {
 		time.Sleep(convergeRepeatInterval)
 	}
 
-	createClaimedTaskWithDeadCell := func() {
+	createRunningTaskWithDeadCell := func() {
 		task := models.Task{
 			Domain: "tests",
 
@@ -97,7 +97,7 @@ var _ = Describe("Converger", func() {
 		err := bbs.DesireTask(task)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = bbs.ClaimTask(task.TaskGuid, "dead-cell")
+		err = bbs.StartTask(task.TaskGuid, "dead-cell")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
@@ -188,8 +188,8 @@ var _ = Describe("Converger", func() {
 				})
 			})
 
-			Describe("when a claimed task with a dead cell is present", func() {
-				JustBeforeEach(createClaimedTaskWithDeadCell)
+			Describe("when a running task with a dead cell is present", func() {
+				JustBeforeEach(createRunningTaskWithDeadCell)
 
 				It("eventually marks the task as failed", func() {
 					Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
