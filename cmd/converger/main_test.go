@@ -150,11 +150,7 @@ var _ = Describe("Converger", func() {
 				Value: []byte("something-else"),
 			})
 			Ω(err).ShouldNot(HaveOccurred())
-
-			time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
 		})
-
-		itIsInactive()
 
 		It("exits with an error", func() {
 			Eventually(runner.Session.ExitCode).Should(Equal(1))
