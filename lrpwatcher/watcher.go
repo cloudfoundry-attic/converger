@@ -76,27 +76,20 @@ func (watcher Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) erro
 	return nil
 }
 
-func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChange) {
-	var desiredLRP models.DesiredLRP
-	var desiredInstances int
+type LRPIM interface {
+	RequestLRPStartAuction(models.LRPStartAuction) error
+	RequestStopLRPInstance(models.ActualLRP) error
+	RequestLRPStopAuction(models.LRPStopAuction) error
+}
 
+type Banana interface {
+	ApplyDelta(models.DesiredLRP, []models.ActualLRP) error
+}
+
+func (watcher Watcher) ProcessDesiredChange(desiredLRP models.DesiredLRP, actualInstances models.ActualLRPsByIndex) error {
 	changeLogger := watcher.logger.Session("desired-lrp-change")
 
-	if desiredChange.After == nil {
-		desiredLRP = *desiredChange.Before
-		desiredInstances = 0
-	} else {
-		desiredLRP = *desiredChange.After
-		desiredInstances = desiredLRP.Instances
-	}
-
-	actualInstances, instanceGuidToActual, err := watcher.actualsForProcessGuid(desiredLRP.ProcessGuid)
-	if err != nil {
-		changeLogger.Error("fetch-actuals-failed", err, lager.Data{"desired-app-message": desiredLRP})
-		return
-	}
-
-	delta := delta_force.Reconcile(desiredInstances, actualInstances)
+	delta := delta_force.Reconcile(desiredLRP.Instances, actualInstances)
 
 	for _, lrpIndex := range delta.IndicesToStart {
 		changeLogger.Info("request-start", lager.Data{
@@ -128,13 +121,13 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		}
 	}
 
-	for _, guidToStop := range delta.GuidsToStop {
+	for _, idx := range delta.IndicesToStop {
 		changeLogger.Info("request-stop-instance", lager.Data{
 			"desired-app-message": desiredLRP,
 			"stop-instance-guid":  guidToStop,
 		})
 
-		actualToStop := instanceGuidToActual[guidToStop]
+		actualToStop := actualInstances[idx]
 
 		lrpStopInstanceCounter.Increment()
 
@@ -143,27 +136,6 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			changeLogger.Error("request-stop-instance-failed", err, lager.Data{
 				"desired-app-message": desiredLRP,
 				"stop-instance-guid":  guidToStop,
-			})
-		}
-	}
-
-	for _, indexToStopAllButOne := range delta.IndicesToStopAllButOne {
-		changeLogger.Info("request-stop-auction", lager.Data{
-			"desired-app-message":  desiredLRP,
-			"stop-duplicate-index": indexToStopAllButOne,
-		})
-
-		lrpStopIndexCounter.Increment()
-
-		err = watcher.bbs.RequestLRPStopAuction(models.LRPStopAuction{
-			ProcessGuid: desiredLRP.ProcessGuid,
-			Index:       indexToStopAllButOne,
-		})
-
-		if err != nil {
-			changeLogger.Error("request-stop-auction-failed", err, lager.Data{
-				"desired-app-message":  desiredLRP,
-				"stop-duplicate-index": indexToStopAllButOne,
 			})
 		}
 	}
