@@ -169,10 +169,12 @@ var _ = Describe("Watcher", func() {
 				firstActual := bbs.CreateActualLRPArgsForCall(0)
 				Ω(firstActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
 				Ω(firstActual.Index).Should(Equal(0))
+				Ω(firstActual.InstanceGuid).ShouldNot(BeEmpty())
 
 				secondActual := bbs.CreateActualLRPArgsForCall(1)
 				Ω(secondActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
 				Ω(secondActual.Index).Should(Equal(1))
+				Ω(secondActual.InstanceGuid).ShouldNot(BeEmpty())
 			})
 
 			It("requests a LRPStartAuction with the desired LRP", func() {
@@ -232,11 +234,12 @@ var _ = Describe("Watcher", func() {
 			})
 
 			It("does not request any LRPStartAuctions", func() {
+				Consistently(bbs.CreateActualLRPCallCount).Should(BeZero())
 				Consistently(bbs.RequestLRPStartAuctionCallCount).Should(BeZero())
 			})
 		})
 
-		Context("when there are already instances running for the desired app, but some are missing", func() {
+		Context("when there missing indices and extra instances for the LRP", func() {
 			BeforeEach(func() {
 				desiredLRP.Instances = 4
 
@@ -257,12 +260,12 @@ var _ = Describe("Watcher", func() {
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "c",
 						Index:        5,
-						State:        models.ActualLRPStateRunning,
+						State:        models.ActualLRPStateUnclaimed,
 					},
 				}, nil)
 			})
 
-			It("only starts missing ones", func() {
+			It("starts missing ones", func() {
 				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(3))
 
 				Ω(bbs.RequestLRPStartAuctionArgsForCall(0).Index).Should(Equal(1))
@@ -270,72 +273,28 @@ var _ = Describe("Watcher", func() {
 				Ω(bbs.RequestLRPStartAuctionArgsForCall(2).Index).Should(Equal(3))
 			})
 
-			It("does not stop extra ones", func() {
-				Consistently(bbs.RequestLRPStopAuctionCallCount).Should(BeZero())
-			})
-		})
-
-		Context("when there are extra instances running for the desired app", func() {
-			BeforeEach(func() {
-				desiredLRP.Instances = 2
-
-				bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "a",
-						Index:        0,
-						State:        models.ActualLRPStateClaimed,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "b",
-						Index:        1,
-						State:        models.ActualLRPStateClaimed,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "c",
-						Index:        2,
-						State:        models.ActualLRPStateRunning,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "d",
-						Index:        3,
-						State:        models.ActualLRPStateRunning,
-					},
-				}, nil)
-			})
-
-			It("doesn't start anything", func() {
-				Consistently(bbs.RequestLRPStartAuctionCallCount).Should(BeZero())
-			})
-
-			It("stops extra ones", func() {
-				Eventually(bbs.RequestStopLRPInstanceCallCount).Should(Equal(2))
-
-				Ω([]models.ActualLRP{
-					bbs.RequestStopLRPInstanceArgsForCall(0),
-					bbs.RequestStopLRPInstanceArgsForCall(1),
-				}).Should(ConsistOf([]models.ActualLRP{
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "c",
-						Index:        2,
-						State:        models.ActualLRPStateRunning,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "d",
-						Index:        3,
-						State:        models.ActualLRPStateRunning,
-					},
+			It("stops extra running instances and increases the lrp stop instance counter", func() {
+				Eventually(bbs.RequestStopLRPInstanceCallCount).Should(Equal(1))
+				Ω(bbs.RequestStopLRPInstanceArgsForCall(0)).Should(Equal(models.ActualLRP{
+					ProcessGuid:  "the-app-guid-the-app-version",
+					InstanceGuid: "b",
+					Index:        4,
+					State:        models.ActualLRPStateRunning,
 				}))
+
+				Ω(sender.GetCounter("LRPStopInstanceRequests")).Should(Equal(uint64(1)))
 			})
 
-			It("increases the lrp stop instance counter", func() {
-				Eventually(bbs.RequestStopLRPInstanceCallCount).Should(Equal(2))
-				Ω(sender.GetCounter("LRPStopInstanceRequests")).Should(Equal(uint64(2)))
+			It("removes extra unclaimed instances and increases the lrp remove instance counter", func() {
+				Eventually(bbs.RemoveActualLRPCallCount).Should(Equal(1))
+				Ω(bbs.RemoveActualLRPArgsForCall(0)).Should(Equal(models.ActualLRP{
+					ProcessGuid:  "the-app-guid-the-app-version",
+					InstanceGuid: "c",
+					Index:        5,
+					State:        models.ActualLRPStateUnclaimed,
+				}))
+
+				Ω(sender.GetCounter("LRPRemoveInstanceRequests")).Should(Equal(uint64(1)))
 			})
 		})
 
@@ -354,7 +313,7 @@ var _ = Describe("Watcher", func() {
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "b",
 						Index:        1,
-						State:        models.ActualLRPStateClaimed,
+						State:        models.ActualLRPStateUnclaimed,
 					},
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",

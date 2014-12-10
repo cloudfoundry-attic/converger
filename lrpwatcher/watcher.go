@@ -16,9 +16,10 @@ import (
 var ErrNoHealthCheckDefined = errors.New("no health check defined for stack")
 
 const (
-	lrpStartIndexCounter   = metric.Counter("LRPStartIndexRequests")
-	lrpStopIndexCounter    = metric.Counter("LRPStopIndexRequests")
-	lrpStopInstanceCounter = metric.Counter("LRPStopInstanceRequests")
+	lrpStartIndexCounter     = metric.Counter("LRPStartIndexRequests")
+	lrpStopIndexCounter      = metric.Counter("LRPStopIndexRequests")
+	lrpStopInstanceCounter   = metric.Counter("LRPStopInstanceRequests")
+	lrpRemoveInstanceCounter = metric.Counter("LRPRemoveInstanceRequests")
 )
 
 type Watcher struct {
@@ -112,7 +113,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 
 		actualLRP := models.NewActualLRP(
 			desiredLRP.ProcessGuid,
-			"",
+			instanceGuid.String(),
 			"",
 			desiredLRP.Domain,
 			lrpIndex,
@@ -154,14 +155,26 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 
 		actualToStop := instanceGuidToActual[guidToStop]
 
-		lrpStopInstanceCounter.Increment()
+		if actualToStop.State == models.ActualLRPStateUnclaimed {
+			lrpRemoveInstanceCounter.Increment()
 
-		err = watcher.bbs.RequestStopLRPInstance(actualToStop)
-		if err != nil {
-			changeLogger.Error("request-stop-instance-failed", err, lager.Data{
-				"desired-app-message": desiredLRP,
-				"stop-instance-guid":  guidToStop,
-			})
+			err = watcher.bbs.RemoveActualLRP(actualToStop)
+			if err != nil {
+				changeLogger.Error("request-remove-instance-failed", err, lager.Data{
+					"desired-app-message":  desiredLRP,
+					"remove-instance-guid": guidToStop,
+				})
+			}
+		} else {
+			lrpStopInstanceCounter.Increment()
+
+			err = watcher.bbs.RequestStopLRPInstance(actualToStop)
+			if err != nil {
+				changeLogger.Error("request-stop-instance-failed", err, lager.Data{
+					"desired-app-message": desiredLRP,
+					"stop-instance-guid":  guidToStop,
+				})
+			}
 		}
 	}
 
@@ -197,7 +210,7 @@ func (watcher Watcher) actualsForProcessGuid(lrpGuid string) (delta_force.Actual
 	}
 
 	for _, actualLRP := range actualLRPs {
-		actualInstances = append(actualInstances, delta_force.ActualInstance{actualLRP.Index, actualLRP.InstanceGuid, actualLRP.State})
+		actualInstances = append(actualInstances, delta_force.ActualInstance{actualLRP.Index, actualLRP.InstanceGuid})
 		instanceGuidToActual[actualLRP.InstanceGuid] = actualLRP
 	}
 
