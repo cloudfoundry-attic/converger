@@ -153,7 +153,7 @@ var _ = Describe("Converger", func() {
 		})
 
 		It("exits with an error", func() {
-			Eventually(runner.Session.ExitCode).Should(Equal(1))
+			Eventually(runner.Session.ExitCode, 5*time.Second).Should(Equal(1))
 		})
 	})
 
