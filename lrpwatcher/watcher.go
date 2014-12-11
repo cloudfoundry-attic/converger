@@ -180,27 +180,6 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"lrp-guids": lrpGuidsToStop,
 		})
 	}
-
-	for _, indexToStopAllButOne := range delta.IndicesToStopAllButOne {
-		changeLogger.Info("request-stop-auction", lager.Data{
-			"desired-app-message":  desiredLRP,
-			"stop-duplicate-index": indexToStopAllButOne,
-		})
-
-		lrpStopIndexCounter.Increment()
-
-		err = watcher.bbs.RequestLRPStopAuction(models.LRPStopAuction{
-			ProcessGuid: desiredLRP.ProcessGuid,
-			Index:       indexToStopAllButOne,
-		})
-
-		if err != nil {
-			changeLogger.Error("request-stop-auction-failed", err, lager.Data{
-				"desired-app-message":  desiredLRP,
-				"stop-duplicate-index": indexToStopAllButOne,
-			})
-		}
-	}
 }
 
 func (watcher Watcher) actualsForProcessGuid(lrpGuid string) (delta_force.ActualInstances, map[string]models.ActualLRP, error) {

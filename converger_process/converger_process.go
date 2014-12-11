@@ -103,16 +103,6 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 				c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
 			}()
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				tickLog.Info("starting-stop-auctions")
-				defer tickLog.Info("finished-stop-auctions")
-
-				c.bbs.ConvergeLRPStopAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
-			}()
-
 			wg.Wait()
 		}
 	}

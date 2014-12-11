@@ -61,7 +61,6 @@ var _ = Describe("ConvergerProcess", func() {
 		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(1))
 		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(1))
 		Eventually(fakeBBS.ConvergeLRPStartAuctionsCallCount).Should(Equal(1))
-		Eventually(fakeBBS.ConvergeLRPStopAuctionsCallCount).Should(Equal(1))
 
 		timeToClaim, _, _ := fakeBBS.ConvergeTaskArgsForCall(0)
 		Ω(timeToClaim).Should(Equal(30 * time.Second))
@@ -69,7 +68,6 @@ var _ = Describe("ConvergerProcess", func() {
 		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(2))
 		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(2))
 		Eventually(fakeBBS.ConvergeLRPStartAuctionsCallCount).Should(Equal(2))
-		Eventually(fakeBBS.ConvergeLRPStopAuctionsCallCount).Should(Equal(2))
 		timeToClaim, _, _ = fakeBBS.ConvergeTaskArgsForCall(0)
 		Ω(timeToClaim).Should(Equal(30 * time.Second))
 	})
