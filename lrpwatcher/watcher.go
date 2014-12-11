@@ -147,18 +147,20 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		}
 	}
 
+	lrpsToStop := []models.ActualLRP{}
+	lrpGuidsToStop := []string{}
 	for _, guidToStop := range delta.GuidsToStop {
 		changeLogger.Info("request-stop-instance", lager.Data{
 			"desired-app-message": desiredLRP,
 			"stop-instance-guid":  guidToStop,
 		})
 
-		actualToStop := instanceGuidToActual[guidToStop]
+		actual := instanceGuidToActual[guidToStop]
 
-		if actualToStop.State == models.ActualLRPStateUnclaimed {
+		if actual.State == models.ActualLRPStateUnclaimed {
 			lrpRemoveInstanceCounter.Increment()
 
-			err = watcher.bbs.RemoveActualLRP(actualToStop)
+			err = watcher.bbs.RemoveActualLRP(actual)
 			if err != nil {
 				changeLogger.Error("request-remove-instance-failed", err, lager.Data{
 					"desired-app-message":  desiredLRP,
@@ -167,15 +169,16 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			}
 		} else {
 			lrpStopInstanceCounter.Increment()
-
-			err = watcher.bbs.RequestStopLRPInstance(actualToStop)
-			if err != nil {
-				changeLogger.Error("request-stop-instance-failed", err, lager.Data{
-					"desired-app-message": desiredLRP,
-					"stop-instance-guid":  guidToStop,
-				})
-			}
+			lrpsToStop = append(lrpsToStop, actual)
+			lrpGuidsToStop = append(lrpGuidsToStop, actual.InstanceGuid)
 		}
+	}
+
+	err = watcher.bbs.RequestStopLRPInstances(lrpsToStop)
+	if err != nil {
+		changeLogger.Error("request-stop-instance-failed", err, lager.Data{
+			"lrp-guids": lrpGuidsToStop,
+		})
 	}
 
 	for _, indexToStopAllButOne := range delta.IndicesToStopAllButOne {
