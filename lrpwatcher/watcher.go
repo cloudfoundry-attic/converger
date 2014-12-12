@@ -1,7 +1,6 @@
 package lrpwatcher
 
 import (
-	"errors"
 	"os"
 	"sync"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
-
-var ErrNoHealthCheckDefined = errors.New("no health check defined for stack")
 
 const (
 	lrpStartInstanceCounter = metric.Counter("LRPInstanceStartRequests")
