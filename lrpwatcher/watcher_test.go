@@ -203,7 +203,7 @@ var _ = Describe("Watcher", func() {
 
 			It("increases the lrp start counter", func() {
 				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
-				Ω(sender.GetCounter("LRPStartIndexRequests")).Should(Equal(uint64(2)))
+				Ω(sender.GetCounter("LRPInstanceStartRequests")).Should(Equal(uint64(2)))
 			})
 		})
 
@@ -274,29 +274,25 @@ var _ = Describe("Watcher", func() {
 			})
 
 			It("stops extra running instances and increases the lrp stop instance counter", func() {
-				Eventually(bbs.RequestStopLRPInstancesCallCount).Should(Equal(1))
-				Ω(bbs.RequestStopLRPInstancesArgsForCall(0)).Should(Equal([]models.ActualLRP{
+				Eventually(bbs.RetireActualLRPsCallCount).Should(Equal(1))
+
+				retiredLRPs, _ := bbs.RetireActualLRPsArgsForCall(0)
+				Ω(retiredLRPs).Should(Equal([]models.ActualLRP{
 					{
 						ProcessGuid:  "the-app-guid-the-app-version",
 						InstanceGuid: "b",
 						Index:        4,
 						State:        models.ActualLRPStateRunning,
 					},
+					{
+						ProcessGuid:  "the-app-guid-the-app-version",
+						InstanceGuid: "c",
+						Index:        5,
+						State:        models.ActualLRPStateUnclaimed,
+					},
 				}))
 
-				Ω(sender.GetCounter("LRPStopInstanceRequests")).Should(Equal(uint64(1)))
-			})
-
-			It("removes extra unclaimed instances and increases the lrp remove instance counter", func() {
-				Eventually(bbs.RemoveActualLRPCallCount).Should(Equal(1))
-				Ω(bbs.RemoveActualLRPArgsForCall(0)).Should(Equal(models.ActualLRP{
-					ProcessGuid:  "the-app-guid-the-app-version",
-					InstanceGuid: "c",
-					Index:        5,
-					State:        models.ActualLRPStateUnclaimed,
-				}))
-
-				Ω(sender.GetCounter("LRPRemoveInstanceRequests")).Should(Equal(uint64(1)))
+				Ω(sender.GetCounter("LRPInstanceStopRequests")).Should(Equal(uint64(2)))
 			})
 		})
 	})
@@ -325,9 +321,10 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("stops all instances", func() {
-			Eventually(bbs.RequestStopLRPInstancesCallCount).Should(Equal(1))
+			Eventually(bbs.RetireActualLRPsCallCount).Should(Equal(1))
 
-			Ω(bbs.RequestStopLRPInstancesArgsForCall(0)).Should(Equal([]models.ActualLRP{
+			retiredLRPs, _ := bbs.RetireActualLRPsArgsForCall(0)
+			Ω(retiredLRPs).Should(Equal([]models.ActualLRP{
 				{
 					ProcessGuid:  "the-app-guid-the-app-version",
 					InstanceGuid: "a",

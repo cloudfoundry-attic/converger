@@ -16,10 +16,8 @@ import (
 var ErrNoHealthCheckDefined = errors.New("no health check defined for stack")
 
 const (
-	lrpStartIndexCounter     = metric.Counter("LRPStartIndexRequests")
-	lrpStopIndexCounter      = metric.Counter("LRPStopIndexRequests")
-	lrpStopInstanceCounter   = metric.Counter("LRPStopInstanceRequests")
-	lrpRemoveInstanceCounter = metric.Counter("LRPRemoveInstanceRequests")
+	lrpStartInstanceCounter = metric.Counter("LRPInstanceStartRequests")
+	lrpStopInstanceCounter  = metric.Counter("LRPInstanceStopRequests")
 )
 
 type Watcher struct {
@@ -81,7 +79,9 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 	var desiredLRP models.DesiredLRP
 	var desiredInstances int
 
-	changeLogger := watcher.logger.Session("desired-lrp-change")
+	changeLogger := watcher.logger.Session("desired-lrp-change", lager.Data{
+		"desired-lrp": desiredLRP,
+	})
 
 	if desiredChange.After == nil {
 		desiredLRP = *desiredChange.Before
@@ -101,8 +101,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 
 	for _, lrpIndex := range delta.IndicesToStart {
 		changeLogger.Info("request-start", lager.Data{
-			"desired-app-message": desiredLRP,
-			"index":               lrpIndex,
+			"index": lrpIndex,
 		})
 
 		instanceGuid, err := uuid.NewV4()
@@ -127,13 +126,12 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			InstanceGuid: instanceGuid.String(),
 		}
 
-		lrpStartIndexCounter.Increment()
+		lrpStartInstanceCounter.Increment()
 
 		_, err = watcher.bbs.CreateActualLRP(actualLRP)
 		if err != nil {
 			changeLogger.Error("create-unclaimed-lrp-failed", err, lager.Data{
-				"desired-app-message": desiredLRP,
-				"index":               lrpIndex,
+				"index": lrpIndex,
 			})
 			continue
 		}
@@ -141,44 +139,25 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		err = watcher.bbs.RequestLRPStartAuction(startMessage)
 		if err != nil {
 			changeLogger.Error("request-start-auction-failed", err, lager.Data{
-				"desired-app-message": desiredLRP,
-				"index":               lrpIndex,
+				"index": lrpIndex,
 			})
 		}
 	}
 
-	lrpsToStop := []models.ActualLRP{}
-	lrpGuidsToStop := []string{}
-	for _, guidToStop := range delta.GuidsToStop {
+	lrpsToRetire := []models.ActualLRP{}
+	for _, guidToRetire := range delta.GuidsToStop {
 		changeLogger.Info("request-stop-instance", lager.Data{
-			"desired-app-message": desiredLRP,
-			"stop-instance-guid":  guidToStop,
+			"stop-instance-guid": guidToRetire,
 		})
 
-		actual := instanceGuidToActual[guidToStop]
-
-		if actual.State == models.ActualLRPStateUnclaimed {
-			lrpRemoveInstanceCounter.Increment()
-
-			err = watcher.bbs.RemoveActualLRP(actual)
-			if err != nil {
-				changeLogger.Error("request-remove-instance-failed", err, lager.Data{
-					"desired-app-message":  desiredLRP,
-					"remove-instance-guid": guidToStop,
-				})
-			}
-		} else {
-			lrpStopInstanceCounter.Increment()
-			lrpsToStop = append(lrpsToStop, actual)
-			lrpGuidsToStop = append(lrpGuidsToStop, actual.InstanceGuid)
-		}
+		lrpsToRetire = append(lrpsToRetire, instanceGuidToActual[guidToRetire])
 	}
 
-	err = watcher.bbs.RequestStopLRPInstances(lrpsToStop)
+	lrpStopInstanceCounter.Add(uint64(len(lrpsToRetire)))
+
+	err = watcher.bbs.RetireActualLRPs(lrpsToRetire, changeLogger)
 	if err != nil {
-		changeLogger.Error("request-stop-instance-failed", err, lager.Data{
-			"lrp-guids": lrpGuidsToStop,
-		})
+		changeLogger.Error("failed-to-retire-actual-lrps", err)
 	}
 }
 
