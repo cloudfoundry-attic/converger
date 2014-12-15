@@ -164,31 +164,29 @@ var _ = Describe("Watcher", func() {
 
 		Describe("the happy path", func() {
 			It("creates ActualLRPs for the desired LRP", func() {
-				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
+				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(desiredLRP.Instances))
 
 				firstActual := bbs.CreateActualLRPArgsForCall(0)
-				Ω(firstActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
+				Ω(firstActual.ProcessGuid).Should(Equal(desiredLRP.ProcessGuid))
 				Ω(firstActual.Index).Should(Equal(0))
-				Ω(firstActual.InstanceGuid).ShouldNot(BeEmpty())
+				Ω(firstActual.Domain).Should(Equal(desiredLRP.Domain))
 
 				secondActual := bbs.CreateActualLRPArgsForCall(1)
-				Ω(secondActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
+				Ω(secondActual.ProcessGuid).Should(Equal(desiredLRP.ProcessGuid))
 				Ω(secondActual.Index).Should(Equal(1))
-				Ω(secondActual.InstanceGuid).ShouldNot(BeEmpty())
+				Ω(secondActual.Domain).Should(Equal(desiredLRP.Domain))
 			})
 
 			It("requests a LRPStartAuction with the desired LRP", func() {
 				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
 
 				firstStartAuction := bbs.RequestLRPStartAuctionArgsForCall(0)
-				Ω(firstStartAuction.DesiredLRP.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
-				Ω(firstStartAuction.InstanceGuid).ShouldNot(BeEmpty())
+				Ω(firstStartAuction.DesiredLRP).Should(Equal(desiredLRP))
+				Ω(firstStartAuction.Index).Should(Equal(0))
 
 				secondStartAuction := bbs.RequestLRPStartAuctionArgsForCall(1)
-				Ω(secondStartAuction.DesiredLRP.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
-				Ω(secondStartAuction.InstanceGuid).ShouldNot(BeEmpty())
-
-				Ω(firstStartAuction.InstanceGuid).ShouldNot(Equal(secondStartAuction.InstanceGuid))
+				Ω(secondStartAuction.DesiredLRP).Should(Equal(desiredLRP))
+				Ω(secondStartAuction.Index).Should(Equal(1))
 			})
 
 			It("assigns increasing indices for the auction requests", func() {
@@ -240,28 +238,28 @@ var _ = Describe("Watcher", func() {
 		})
 
 		Context("when there missing indices and extra instances for the LRP", func() {
+			var lrp1, lrp2, lrp3 models.ActualLRP
+
 			BeforeEach(func() {
 				desiredLRP.Instances = 4
-
+				lrp1 = models.ActualLRP{
+					ActualLRPKey:          models.NewActualLRPKey(desiredLRP.ProcessGuid, 0, desiredLRP.Domain),
+					ActualLRPContainerKey: models.NewActualLRPContainerKey("a", "cell-a"),
+					State: models.ActualLRPStateClaimed,
+				}
+				lrp2 = models.ActualLRP{
+					ActualLRPKey:          models.NewActualLRPKey(desiredLRP.ProcessGuid, 4, desiredLRP.Domain),
+					ActualLRPContainerKey: models.NewActualLRPContainerKey("b", "cell-b"),
+					State: models.ActualLRPStateRunning,
+				}
+				lrp3 = models.ActualLRP{
+					ActualLRPKey: models.NewActualLRPKey(desiredLRP.ProcessGuid, 5, desiredLRP.Domain),
+					State:        models.ActualLRPStateUnclaimed,
+				}
 				bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "a",
-						Index:        0,
-						State:        models.ActualLRPStateClaimed,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "b",
-						Index:        4,
-						State:        models.ActualLRPStateRunning,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "c",
-						Index:        5,
-						State:        models.ActualLRPStateUnclaimed,
-					},
+					lrp1,
+					lrp2,
+					lrp3,
 				}, nil)
 			})
 
@@ -277,20 +275,7 @@ var _ = Describe("Watcher", func() {
 				Eventually(bbs.RetireActualLRPsCallCount).Should(Equal(1))
 
 				retiredLRPs, _ := bbs.RetireActualLRPsArgsForCall(0)
-				Ω(retiredLRPs).Should(Equal([]models.ActualLRP{
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "b",
-						Index:        4,
-						State:        models.ActualLRPStateRunning,
-					},
-					{
-						ProcessGuid:  "the-app-guid-the-app-version",
-						InstanceGuid: "c",
-						Index:        5,
-						State:        models.ActualLRPStateUnclaimed,
-					},
-				}))
+				Ω(retiredLRPs).Should(ConsistOf(lrp2, lrp3))
 
 				Ω(sender.GetCounter("LRPInstanceStopRequests")).Should(Equal(uint64(2)))
 			})
@@ -298,6 +283,8 @@ var _ = Describe("Watcher", func() {
 	})
 
 	Describe("when a desired LRP is deleted", func() {
+		var lrp models.ActualLRP
+
 		JustBeforeEach(func() {
 			desiredLRPChangeChan <- models.DesiredLRPChange{
 				Before: &desiredLRP,
@@ -306,14 +293,12 @@ var _ = Describe("Watcher", func() {
 		})
 
 		BeforeEach(func() {
-			bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{
-				{
-					ProcessGuid:  "the-app-guid-the-app-version",
-					InstanceGuid: "a",
-					Index:        0,
-					State:        models.ActualLRPStateClaimed,
-				},
-			}, nil)
+			lrp = models.ActualLRP{
+				ActualLRPKey:          models.NewActualLRPKey(desiredLRP.ProcessGuid, 0, desiredLRP.Domain),
+				ActualLRPContainerKey: models.NewActualLRPContainerKey("a", "cell-a"),
+				State: models.ActualLRPStateClaimed,
+			}
+			bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{lrp}, nil)
 		})
 
 		It("doesn't start anything", func() {
@@ -324,14 +309,7 @@ var _ = Describe("Watcher", func() {
 			Eventually(bbs.RetireActualLRPsCallCount).Should(Equal(1))
 
 			retiredLRPs, _ := bbs.RetireActualLRPsArgsForCall(0)
-			Ω(retiredLRPs).Should(Equal([]models.ActualLRP{
-				{
-					ProcessGuid:  "the-app-guid-the-app-version",
-					InstanceGuid: "a",
-					Index:        0,
-					State:        models.ActualLRPStateClaimed,
-				},
-			}))
+			Ω(retiredLRPs).Should(ConsistOf(lrp))
 		})
 	})
 })
