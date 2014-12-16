@@ -103,34 +103,8 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"index": lrpIndex,
 		})
 
-		actualLRPKey := models.NewActualLRPKey(
-			desiredLRP.ProcessGuid,
-			lrpIndex,
-			desiredLRP.Domain,
-		)
-
-		startMessage := models.LRPStartAuction{
-			DesiredLRP: desiredLRP,
-
-			Index: lrpIndex,
-		}
-
 		lrpStartInstanceCounter.Increment()
-
-		_, err = watcher.bbs.CreateActualLRP(actualLRPKey)
-		if err != nil {
-			changeLogger.Error("create-unclaimed-lrp-failed", err, lager.Data{
-				"index": lrpIndex,
-			})
-			continue
-		}
-
-		err = watcher.bbs.RequestLRPStartAuction(startMessage)
-		if err != nil {
-			changeLogger.Error("request-start-auction-failed", err, lager.Data{
-				"index": lrpIndex,
-			})
-		}
+		watcher.bbs.CreateActualLRP(desiredLRP, lrpIndex, changeLogger)
 	}
 
 	lrpsToRetire := []models.ActualLRP{}

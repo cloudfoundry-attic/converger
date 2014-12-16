@@ -78,7 +78,7 @@ var _ = Describe("Converger", func() {
 	})
 
 	startConverger := func() {
-		runner.Start(convergeRepeatInterval, taskKickInterval, 30*time.Minute, expireCompletedTaskDuration, 30*time.Second, 300*time.Second)
+		runner.Start(convergeRepeatInterval, taskKickInterval, 30*time.Minute, expireCompletedTaskDuration)
 		time.Sleep(convergeRepeatInterval)
 	}
 
@@ -125,19 +125,21 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(desireLRP)
 
 			It("does not create start auctions for apps that are missing instances", func() {
-				Consistently(bbs.LRPStartAuctions, 0.5).Should(BeEmpty())
+				Consistently(bbs.ActualLRPs, 0.5).Should(BeEmpty())
 			})
 		})
 	}
 
 	Context("when the converger has the lock", func() {
-		JustBeforeEach(startConverger)
-
 		Describe("when an LRP is desired", func() {
 			BeforeEach(desireLRP)
 
-			It("desires N start auctions in the BBS", func() {
-				Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(3))
+			It("creates N actual LRPs in the BBS", func() {
+				Consistently(bbs.ActualLRPs, 0.5).Should(BeEmpty())
+
+				startConverger()
+
+				Eventually(bbs.ActualLRPs, 0.5).Should(HaveLen(3))
 			})
 		})
 	})
@@ -179,11 +181,13 @@ var _ = Describe("Converger", func() {
 			})
 
 			Describe("when an LRP is desired", func() {
-				JustBeforeEach(desireLRP)
-
 				Context("for an app that is not running at all", func() {
-					It("desires N start auctions in the BBS", func() {
-						Eventually(bbs.LRPStartAuctions, 0.5).Should(HaveLen(3))
+					It("creates N actual LRPs in the BBS", func() {
+						Consistently(bbs.ActualLRPs, 0.5).Should(BeEmpty())
+
+						desireLRP()
+
+						Eventually(bbs.ActualLRPs, 0.5).Should(HaveLen(3))
 					})
 				})
 			})

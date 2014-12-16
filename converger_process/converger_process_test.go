@@ -23,8 +23,6 @@ var _ = Describe("ConvergerProcess", func() {
 	var kickPendingTaskDuration time.Duration
 	var expirePendingTaskDuration time.Duration
 	var expireCompletedTaskDuration time.Duration
-	var kickPendingLRPStartAuctionDuration time.Duration
-	var expireClaimedLRPStartAuctionDuration time.Duration
 
 	var process ifrit.Process
 
@@ -37,8 +35,6 @@ var _ = Describe("ConvergerProcess", func() {
 		kickPendingTaskDuration = 10 * time.Millisecond
 		expirePendingTaskDuration = 30 * time.Second
 		expireCompletedTaskDuration = 60 * time.Minute
-		kickPendingLRPStartAuctionDuration = 30 * time.Second
-		expireClaimedLRPStartAuctionDuration = 300 * time.Second
 
 		process = ifrit.Invoke(
 			converger_process.New(
@@ -47,9 +43,7 @@ var _ = Describe("ConvergerProcess", func() {
 				convergeRepeatInterval,
 				kickPendingTaskDuration,
 				expirePendingTaskDuration,
-				expireCompletedTaskDuration,
-				kickPendingLRPStartAuctionDuration,
-				expireClaimedLRPStartAuctionDuration))
+				expireCompletedTaskDuration))
 	})
 
 	AfterEach(func() {
@@ -60,15 +54,12 @@ var _ = Describe("ConvergerProcess", func() {
 	It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
 		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(1))
 		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(1))
-		Eventually(fakeBBS.ConvergeLRPStartAuctionsCallCount).Should(Equal(1))
-
 		timeToClaim, _, _ := fakeBBS.ConvergeTaskArgsForCall(0)
 		Ω(timeToClaim).Should(Equal(30 * time.Second))
 
 		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(2))
 		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(2))
-		Eventually(fakeBBS.ConvergeLRPStartAuctionsCallCount).Should(Equal(2))
-		timeToClaim, _, _ = fakeBBS.ConvergeTaskArgsForCall(0)
+		timeToClaim, _, _ = fakeBBS.ConvergeTaskArgsForCall(1)
 		Ω(timeToClaim).Should(Equal(30 * time.Second))
 	})
 })

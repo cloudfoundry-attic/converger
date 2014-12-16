@@ -31,10 +31,7 @@ func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
 	}
 }
 
-func (r *ConvergerRunner) Start(
-	convergeRepeatInterval, kickPendingTaskDuration, expirePendingTaskDuration, expireCompletedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration,
-) {
-
+func (r *ConvergerRunner) Start(convergeRepeatInterval, kickPendingTaskDuration, expirePendingTaskDuration, expireCompletedTaskDuration time.Duration) {
 	if r.Session != nil {
 		panic("starting two convergers!!!")
 	}
@@ -48,8 +45,6 @@ func (r *ConvergerRunner) Start(
 			"-kickPendingTaskDuration", kickPendingTaskDuration.String(),
 			"-expirePendingTaskDuration", expirePendingTaskDuration.String(),
 			"-expireCompletedTaskDuration", expireCompletedTaskDuration.String(),
-			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
-			"-expireClaimedLRPStartAuctionDuration", expireClaimedLRPStartAuctionDuration.String(),
 			"-heartbeatInterval", "1s",
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
