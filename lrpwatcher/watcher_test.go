@@ -176,7 +176,7 @@ var _ = Describe("Watcher", func() {
 
 			It("increases the lrp start counter", func() {
 				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
-				Ω(sender.GetCounter("LRPStartIndexRequests")).Should(Equal(uint64(2)))
+				Ω(sender.GetCounter("LRPInstanceStartRequests")).Should(Equal(uint64(2)))
 			})
 		})
 

@@ -103,7 +103,7 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"index": lrpIndex,
 		})
 
-		lrpStartIndexCounter.Increment()
+		lrpStartInstanceCounter.Increment()
 		watcher.bbs.CreateActualLRP(desiredLRP, lrpIndex, changeLogger)
 	}
 
