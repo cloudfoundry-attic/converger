@@ -9,12 +9,12 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/cloudfoundry/dropsonde/metrics"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Watcher", func() {
@@ -82,25 +82,24 @@ var _ = Describe("Watcher", func() {
 
 	Describe("lifecycle", func() {
 		Describe("waiting until all desired are processed before shutting down", func() {
-			var receivedAuctions chan models.LRPStartAuction
+			var createdActualLRP chan struct{}
 
 			BeforeEach(func() {
-				receivedAuctions = make(chan models.LRPStartAuction)
-				bbs.RequestLRPStartAuctionStub = func(lrp models.LRPStartAuction) error {
-					receivedAuctions <- lrp
-					return nil
+				createdActualLRP = make(chan struct{})
+				bbs.CreateActualLRPStub = func(models.DesiredLRP, int, lager.Logger) (*models.ActualLRP, error) {
+					createdActualLRP <- struct{}{}
+					return nil, nil
 				}
 			})
 
 			It("should not shut down until all desireds are processed", func() {
-				desiredLRPChangeChan <- models.DesiredLRPChange{
-					Before: nil,
-					After:  &desiredLRP,
-				}
+				numChanges := 2
 
-				desiredLRPChangeChan <- models.DesiredLRPChange{
-					Before: nil,
-					After:  &desiredLRP,
+				for i := 0; i < numChanges; i++ {
+					desiredLRPChangeChan <- models.DesiredLRPChange{
+						Before: nil,
+						After:  &desiredLRP,
+					}
 				}
 
 				watcher.Signal(syscall.SIGINT)
@@ -108,8 +107,8 @@ var _ = Describe("Watcher", func() {
 
 				Consistently(didShutDown).ShouldNot(Receive())
 
-				for i := 0; i < desiredLRP.Instances*2; i++ {
-					Eventually(receivedAuctions).Should(Receive())
+				for i := 0; i < desiredLRP.Instances*numChanges; i++ {
+					Eventually(createdActualLRP).Should(Receive())
 				}
 
 				Eventually(didShutDown).Should(Receive())
@@ -130,7 +129,7 @@ var _ = Describe("Watcher", func() {
 					After:  &desiredLRP,
 				}
 
-				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
+				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
 			})
 		})
 
@@ -149,7 +148,7 @@ var _ = Describe("Watcher", func() {
 					After:  &desiredLRP,
 				}
 
-				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
+				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
 			})
 		})
 	})
@@ -166,65 +165,18 @@ var _ = Describe("Watcher", func() {
 			It("creates ActualLRPs for the desired LRP", func() {
 				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
 
-				firstActual := bbs.CreateActualLRPArgsForCall(0)
-				Ω(firstActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
-				Ω(firstActual.Index).Should(Equal(0))
-				Ω(firstActual.InstanceGuid).ShouldNot(BeEmpty())
+				firstDesired, firstIndex, _ := bbs.CreateActualLRPArgsForCall(0)
+				Ω(firstDesired).Should(Equal(desiredLRP))
+				Ω(firstIndex).Should(Equal(0))
 
-				secondActual := bbs.CreateActualLRPArgsForCall(1)
-				Ω(secondActual.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
-				Ω(secondActual.Index).Should(Equal(1))
-				Ω(secondActual.InstanceGuid).ShouldNot(BeEmpty())
-			})
-
-			It("requests a LRPStartAuction with the desired LRP", func() {
-				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
-
-				firstStartAuction := bbs.RequestLRPStartAuctionArgsForCall(0)
-				Ω(firstStartAuction.DesiredLRP.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
-				Ω(firstStartAuction.InstanceGuid).ShouldNot(BeEmpty())
-
-				secondStartAuction := bbs.RequestLRPStartAuctionArgsForCall(1)
-				Ω(secondStartAuction.DesiredLRP.ProcessGuid).Should(Equal("the-app-guid-the-app-version"))
-				Ω(secondStartAuction.InstanceGuid).ShouldNot(BeEmpty())
-
-				Ω(firstStartAuction.InstanceGuid).ShouldNot(Equal(secondStartAuction.InstanceGuid))
-			})
-
-			It("assigns increasing indices for the auction requests", func() {
-				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
-
-				firstStartAuction := bbs.RequestLRPStartAuctionArgsForCall(0)
-				Ω(firstStartAuction.Index).Should(Equal(0))
-
-				secondStartAuction := bbs.RequestLRPStartAuctionArgsForCall(1)
-				Ω(secondStartAuction.Index).Should(Equal(1))
+				secondDesired, secondIndex, _ := bbs.CreateActualLRPArgsForCall(1)
+				Ω(secondDesired).Should(Equal(desiredLRP))
+				Ω(secondIndex).Should(Equal(1))
 			})
 
 			It("increases the lrp start counter", func() {
-				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(2))
-				Ω(sender.GetCounter("LRPInstanceStartRequests")).Should(Equal(uint64(2)))
-			})
-		})
-
-		Context("when there is an error creating the ActualLRP", func() {
-			BeforeEach(func() {
-				bbs.CreateActualLRPReturns(nil, errors.New("connection error"))
-			})
-
-			It("does not start an auction", func() {
 				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(2))
-				Ω(bbs.RequestLRPStartAuctionCallCount()).Should(Equal(0))
-			})
-		})
-
-		Context("when there is an error requesting a LRPStartAuction", func() {
-			BeforeEach(func() {
-				bbs.RequestLRPStartAuctionReturns(errors.New("connection error"))
-			})
-
-			It("logs an error", func() {
-				Eventually(logger.TestSink.Buffer).Should(gbytes.Say("watcher.desired-lrp-change.request-start-auction-failed"))
+				Ω(sender.GetCounter("LRPStartIndexRequests")).Should(Equal(uint64(2)))
 			})
 		})
 
@@ -233,9 +185,8 @@ var _ = Describe("Watcher", func() {
 				bbs.ActualLRPsByProcessGuidReturns(nil, errors.New("connection error"))
 			})
 
-			It("does not request any LRPStartAuctions", func() {
+			It("does not create any LRPStartAuctions", func() {
 				Consistently(bbs.CreateActualLRPCallCount).Should(BeZero())
-				Consistently(bbs.RequestLRPStartAuctionCallCount).Should(BeZero())
 			})
 		})
 
@@ -266,11 +217,16 @@ var _ = Describe("Watcher", func() {
 			})
 
 			It("starts missing ones", func() {
-				Eventually(bbs.RequestLRPStartAuctionCallCount).Should(Equal(3))
+				Eventually(bbs.CreateActualLRPCallCount).Should(Equal(3))
 
-				Ω(bbs.RequestLRPStartAuctionArgsForCall(0).Index).Should(Equal(1))
-				Ω(bbs.RequestLRPStartAuctionArgsForCall(1).Index).Should(Equal(2))
-				Ω(bbs.RequestLRPStartAuctionArgsForCall(2).Index).Should(Equal(3))
+				_, index0, _ := bbs.CreateActualLRPArgsForCall(0)
+				Ω(index0).Should(Equal(1))
+
+				_, index1, _ := bbs.CreateActualLRPArgsForCall(1)
+				Ω(index1).Should(Equal(2))
+
+				_, index2, _ := bbs.CreateActualLRPArgsForCall(2)
+				Ω(index2).Should(Equal(3))
 			})
 
 			It("stops extra running instances and increases the lrp stop instance counter", func() {
@@ -317,7 +273,7 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("doesn't start anything", func() {
-			Consistently(bbs.RequestLRPStartAuctionCallCount).Should(BeZero())
+			Consistently(bbs.CreateActualLRPCallCount).Should(BeZero())
 		})
 
 		It("stops all instances", func() {

@@ -12,16 +12,14 @@ import (
 )
 
 type ConvergerProcess struct {
-	id                              string
-	bbs                             Bbs.ConvergerBBS
-	logger                          lager.Logger
-	convergeRepeatInterval          time.Duration
-	kickPendingTaskDuration         time.Duration
-	expirePendingTaskDuration       time.Duration
-	expireCompletedTaskDuration     time.Duration
-	kickPendingLRPAuctionDuration   time.Duration
-	expireClaimedLRPAuctionDuration time.Duration
-	closeOnce                       *sync.Once
+	id                          string
+	bbs                         Bbs.ConvergerBBS
+	logger                      lager.Logger
+	convergeRepeatInterval      time.Duration
+	kickPendingTaskDuration     time.Duration
+	expirePendingTaskDuration   time.Duration
+	expireCompletedTaskDuration time.Duration
+	closeOnce                   *sync.Once
 }
 
 func New(
@@ -30,9 +28,7 @@ func New(
 	convergeRepeatInterval,
 	kickPendingTaskDuration,
 	expirePendingTaskDuration,
-	expireCompletedTaskDuration,
-	kickPendingLRPAuctionDuration,
-	expireClaimedLRPAuctionDuration time.Duration,
+	expireCompletedTaskDuration time.Duration,
 ) *ConvergerProcess {
 
 	uuid, err := uuid.NewV4()
@@ -41,16 +37,14 @@ func New(
 	}
 
 	return &ConvergerProcess{
-		id:                              uuid.String(),
-		bbs:                             bbs,
-		logger:                          logger,
-		convergeRepeatInterval:          convergeRepeatInterval,
-		kickPendingTaskDuration:         kickPendingTaskDuration,
-		expirePendingTaskDuration:       expirePendingTaskDuration,
-		expireCompletedTaskDuration:     expireCompletedTaskDuration,
-		kickPendingLRPAuctionDuration:   kickPendingLRPAuctionDuration,
-		expireClaimedLRPAuctionDuration: expireClaimedLRPAuctionDuration,
-		closeOnce:                       &sync.Once{},
+		id:                          uuid.String(),
+		bbs:                         bbs,
+		logger:                      logger,
+		convergeRepeatInterval:      convergeRepeatInterval,
+		kickPendingTaskDuration:     kickPendingTaskDuration,
+		expirePendingTaskDuration:   expirePendingTaskDuration,
+		expireCompletedTaskDuration: expireCompletedTaskDuration,
+		closeOnce:                   &sync.Once{},
 	}
 }
 
@@ -91,16 +85,6 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 				defer tickLog.Info("finished-lrps")
 
 				c.bbs.ConvergeLRPs(c.convergeRepeatInterval)
-			}()
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				tickLog.Info("starting-start-auctions")
-				defer tickLog.Info("finished-start-auctions")
-
-				c.bbs.ConvergeLRPStartAuctions(c.kickPendingLRPAuctionDuration, c.expireClaimedLRPAuctionDuration)
 			}()
 
 			wg.Wait()

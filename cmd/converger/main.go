@@ -59,18 +59,6 @@ var expirePendingTaskDuration = flag.Duration(
 	"unclaimed tasks are marked as failed, after this duration",
 )
 
-var kickPendingLRPStartAuctionDuration = flag.Duration(
-	"kickPendingLRPStartAuctionDuration",
-	30*time.Second,
-	"the interval between kicks to pending start auctions for long-running process",
-)
-
-var expireClaimedLRPStartAuctionDuration = flag.Duration(
-	"expireClaimedLRPStartAuctionDuration",
-	300*time.Second,
-	"unclaimed start auctions for long-running processes are deleted, after this interval",
-)
-
 var dropsondeOrigin = flag.String(
 	"dropsondeOrigin",
 	"converger",
@@ -108,8 +96,6 @@ func main() {
 		*kickPendingTaskDuration,
 		*expirePendingTaskDuration,
 		*expireCompletedTaskDuration,
-		*kickPendingLRPStartAuctionDuration,
-		*expireClaimedLRPStartAuctionDuration,
 	)
 
 	watcher := lrpwatcher.New(bbs, logger)

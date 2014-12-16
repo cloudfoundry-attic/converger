@@ -9,7 +9,6 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -104,44 +103,8 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 			"index": lrpIndex,
 		})
 
-		instanceGuid, err := uuid.NewV4()
-		if err != nil {
-			changeLogger.Error("generating-instance-guid-failed", err)
-			return
-		}
-
-		actualLRP := models.NewActualLRP(
-			desiredLRP.ProcessGuid,
-			instanceGuid.String(),
-			"",
-			desiredLRP.Domain,
-			lrpIndex,
-			models.ActualLRPStateUnclaimed,
-		)
-
-		startMessage := models.LRPStartAuction{
-			DesiredLRP: desiredLRP,
-
-			Index:        lrpIndex,
-			InstanceGuid: instanceGuid.String(),
-		}
-
-		lrpStartInstanceCounter.Increment()
-
-		_, err = watcher.bbs.CreateActualLRP(actualLRP)
-		if err != nil {
-			changeLogger.Error("create-unclaimed-lrp-failed", err, lager.Data{
-				"index": lrpIndex,
-			})
-			continue
-		}
-
-		err = watcher.bbs.RequestLRPStartAuction(startMessage)
-		if err != nil {
-			changeLogger.Error("request-start-auction-failed", err, lager.Data{
-				"index": lrpIndex,
-			})
-		}
+		lrpStartIndexCounter.Increment()
+		watcher.bbs.CreateActualLRP(desiredLRP, lrpIndex, changeLogger)
 	}
 
 	lrpsToRetire := []models.ActualLRP{}
