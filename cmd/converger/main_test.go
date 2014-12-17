@@ -59,10 +59,7 @@ var _ = Describe("Converger", func() {
 	BeforeEach(func() {
 		etcdRunner.Start()
 
-		cellPresence := models.CellPresence{
-			CellID: "the-cell-id",
-			Stack:  "the-stack",
-		}
+		cellPresence := models.NewCellPresence("the-cell-id", "the-stack", "1.2.3.4")
 
 		value, err := models.ToJSON(cellPresence)
 		Ω(err).ShouldNot(HaveOccurred())
