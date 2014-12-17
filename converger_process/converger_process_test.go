@@ -52,14 +52,14 @@ var _ = Describe("ConvergerProcess", func() {
 	})
 
 	It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
-		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(1))
+		Eventually(fakeBBS.ConvergeTasksCallCount, convergeRepeatInterval+2*aBit).Should(Equal(1))
 		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(1))
-		timeToClaim, _, _ := fakeBBS.ConvergeTaskArgsForCall(0)
+		timeToClaim, _, _ := fakeBBS.ConvergeTasksArgsForCall(0)
 		Ω(timeToClaim).Should(Equal(30 * time.Second))
 
-		Eventually(fakeBBS.ConvergeTaskCallCount, convergeRepeatInterval+2*aBit).Should(Equal(2))
+		Eventually(fakeBBS.ConvergeTasksCallCount, convergeRepeatInterval+2*aBit).Should(Equal(2))
 		Eventually(fakeBBS.ConvergeLRPsCallCount).Should(Equal(2))
-		timeToClaim, _, _ = fakeBBS.ConvergeTaskArgsForCall(1)
+		timeToClaim, _, _ = fakeBBS.ConvergeTasksArgsForCall(1)
 		Ω(timeToClaim).Should(Equal(30 * time.Second))
 	})
 })

@@ -74,7 +74,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 				tickLog.Info("starting-tasks")
 				defer tickLog.Info("finished-tasks")
 
-				c.bbs.ConvergeTask(c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
+				c.bbs.ConvergeTasks(c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
 			}()
 
 			wg.Add(1)
