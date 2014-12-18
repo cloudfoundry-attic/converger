@@ -86,9 +86,9 @@ var _ = Describe("Watcher", func() {
 
 			BeforeEach(func() {
 				createdActualLRP = make(chan struct{})
-				bbs.CreateActualLRPStub = func(models.DesiredLRP, int, lager.Logger) (*models.ActualLRP, error) {
+				bbs.CreateActualLRPStub = func(models.DesiredLRP, int, lager.Logger) error {
 					createdActualLRP <- struct{}{}
-					return nil, nil
+					return nil
 				}
 			})
 

@@ -104,7 +104,12 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		})
 
 		lrpStartInstanceCounter.Increment()
-		watcher.bbs.CreateActualLRP(desiredLRP, lrpIndex, changeLogger)
+		err = watcher.bbs.CreateActualLRP(desiredLRP, lrpIndex, changeLogger)
+		if err != nil {
+			changeLogger.Error("failed-to-create-actual-lrp", err, lager.Data{
+				"index": lrpIndex,
+			})
+		}
 	}
 
 	lrpsToRetire := []models.ActualLRP{}
