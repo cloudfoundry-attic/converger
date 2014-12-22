@@ -87,13 +87,13 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 		desiredInstances = desiredLRP.Instances
 	}
 
-	actualInstances, instanceGuidToActual, err := watcher.actualsForProcessGuid(desiredLRP.ProcessGuid)
+	actuals, err := watcher.bbs.ActualLRPsByProcessGuid(desiredLRP.ProcessGuid)
 	if err != nil {
 		changeLogger.Error("fetch-actuals-failed", err, lager.Data{"desired-app-message": desiredLRP})
 		return
 	}
 
-	delta := delta_force.Reconcile(desiredInstances, actualInstances)
+	delta := delta_force.Reconcile(desiredInstances, actuals)
 
 	for _, lrpIndex := range delta.IndicesToStart {
 		changeLogger.Info("request-start", lager.Data{
@@ -110,12 +110,12 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 	}
 
 	lrpsToRetire := []models.ActualLRP{}
-	for _, guidToRetire := range delta.GuidsToStop {
+	for _, index := range delta.IndicesToStop {
 		changeLogger.Info("request-stop-instance", lager.Data{
-			"stop-instance-guid": guidToRetire,
+			"stop-index": index,
 		})
 
-		lrpsToRetire = append(lrpsToRetire, instanceGuidToActual[guidToRetire])
+		lrpsToRetire = append(lrpsToRetire, actuals[index])
 	}
 
 	lrpStopInstanceCounter.Add(uint64(len(lrpsToRetire)))
@@ -124,21 +124,4 @@ func (watcher Watcher) processDesiredChange(desiredChange models.DesiredLRPChang
 	if err != nil {
 		changeLogger.Error("failed-to-retire-actual-lrps", err)
 	}
-}
-
-func (watcher Watcher) actualsForProcessGuid(lrpGuid string) (delta_force.ActualInstances, map[string]models.ActualLRP, error) {
-	actualInstances := delta_force.ActualInstances{}
-	actualLRPs, err := watcher.bbs.ActualLRPsByProcessGuid(lrpGuid)
-	instanceGuidToActual := map[string]models.ActualLRP{}
-
-	if err != nil {
-		return actualInstances, instanceGuidToActual, err
-	}
-
-	for _, actualLRP := range actualLRPs {
-		actualInstances = append(actualInstances, delta_force.ActualInstance{actualLRP.Index, actualLRP.InstanceGuid})
-		instanceGuidToActual[actualLRP.InstanceGuid] = actualLRP
-	}
-
-	return actualInstances, instanceGuidToActual, err
 }

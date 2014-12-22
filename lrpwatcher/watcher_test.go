@@ -209,10 +209,10 @@ var _ = Describe("Watcher", func() {
 					ActualLRPKey: models.NewActualLRPKey(desiredLRP.ProcessGuid, 5, desiredLRP.Domain),
 					State:        models.ActualLRPStateUnclaimed,
 				}
-				bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{
-					lrp1,
-					lrp2,
-					lrp3,
+				bbs.ActualLRPsByProcessGuidReturns(models.ActualLRPsByIndex{
+					0: lrp1,
+					4: lrp2,
+					5: lrp3,
 				}, nil)
 			})
 
@@ -256,7 +256,7 @@ var _ = Describe("Watcher", func() {
 				ActualLRPContainerKey: models.NewActualLRPContainerKey("a", "cell-a"),
 				State: models.ActualLRPStateClaimed,
 			}
-			bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{lrp}, nil)
+			bbs.ActualLRPsByProcessGuidReturns(models.ActualLRPsByIndex{0: lrp}, nil)
 		})
 
 		It("doesn't start anything", func() {
