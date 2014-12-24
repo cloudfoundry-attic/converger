@@ -98,45 +98,26 @@ var _ = Describe("Converger", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
-	desireLRP := func() {
-		err := bbs.DesireLRP(models.DesiredLRP{
-			Domain: "tests",
-
-			ProcessGuid: "the-guid",
-
-			Stack: "some-stack",
-
-			Instances: 3,
-			MemoryMB:  128,
-			DiskMB:    512,
-
-			Action: &models.RunAction{
-				Path: "the-start-command",
-			},
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-	}
-
 	itIsInactive := func() {
-		Describe("when an LRP is desired", func() {
-			JustBeforeEach(desireLRP)
+		Describe("when a task is desired but its cell is dead", func() {
+			JustBeforeEach(createRunningTaskWithDeadCell)
 
-			It("does not create start auctions for apps that are missing instances", func() {
-				Consistently(bbs.ActualLRPs, 0.5).Should(BeEmpty())
+			It("does not converge the task", func() {
+				Consistently(bbs.CompletedTasks, 5).Should(BeEmpty())
 			})
 		})
 	}
 
 	Context("when the converger has the lock", func() {
-		Describe("when an LRP is desired", func() {
-			BeforeEach(desireLRP)
+		Describe("when a task is desired but its cell is dead", func() {
+			JustBeforeEach(createRunningTaskWithDeadCell)
 
-			It("creates N actual LRPs in the BBS", func() {
-				Consistently(bbs.ActualLRPs, 0.5).Should(BeEmpty())
+			It("marks the task as completed and failed", func() {
+				Consistently(bbs.CompletedTasks, 0.5).Should(BeEmpty())
 
 				startConverger()
 
-				Eventually(bbs.ActualLRPs, 0.5).Should(HaveLen(3))
+				Eventually(bbs.CompletedTasks, 0.5).Should(HaveLen(1))
 			})
 		})
 	})
@@ -175,18 +156,6 @@ var _ = Describe("Converger", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
-			})
-
-			Describe("when an LRP is desired", func() {
-				Context("for an app that is not running at all", func() {
-					It("creates N actual LRPs in the BBS", func() {
-						Consistently(bbs.ActualLRPs, 0.5).Should(BeEmpty())
-
-						desireLRP()
-
-						Eventually(bbs.ActualLRPs, 0.5).Should(HaveLen(3))
-					})
-				})
 			})
 
 			Describe("when a running task with a dead cell is present", func() {

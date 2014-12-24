@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
-	"github.com/cloudfoundry-incubator/converger/lrpwatcher"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
@@ -98,12 +97,9 @@ func main() {
 		*expireCompletedTaskDuration,
 	)
 
-	watcher := lrpwatcher.New(bbs, logger)
-
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"heartbeater", heartbeater},
 		{"converger", converger},
-		{"watcher", watcher},
 	})
 
 	logger.Info("started-waiting-for-lock")
