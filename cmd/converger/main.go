@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
@@ -58,6 +59,12 @@ var expirePendingTaskDuration = flag.Duration(
 	"unclaimed tasks are marked as failed, after this duration",
 )
 
+var communicationTimeout = flag.Duration(
+	"communicationTimeout",
+	10*time.Second,
+	"Timeout applied to all HTTP requests.",
+)
+
 const (
 	dropsondeOrigin      = "converger"
 	dropsondeDestination = "localhost:3457"
@@ -67,6 +74,8 @@ func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
 	flag.Parse()
+
+	cf_http.Initialize(*communicationTimeout)
 
 	logger := cf_lager.New("converger")
 
