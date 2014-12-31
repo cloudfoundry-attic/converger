@@ -58,16 +58,9 @@ var expirePendingTaskDuration = flag.Duration(
 	"unclaimed tasks are marked as failed, after this duration",
 )
 
-var dropsondeOrigin = flag.String(
-	"dropsondeOrigin",
-	"converger",
-	"Origin identifier for dropsonde-emitted metrics.",
-)
-
-var dropsondeDestination = flag.String(
-	"dropsondeDestination",
-	"localhost:3457",
-	"Destination for dropsonde-emitted metrics.",
+const (
+	dropsondeOrigin      = "converger"
+	dropsondeDestination = "localhost:3457"
 )
 
 func main() {
@@ -132,7 +125,7 @@ func initializeBBS(logger lager.Logger) Bbs.ConvergerBBS {
 }
 
 func initializeDropsonde(logger lager.Logger) {
-	err := dropsonde.Initialize(*dropsondeDestination, *dropsondeOrigin)
+	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
 	if err != nil {
 		logger.Error("failed to initialize dropsonde: %v", err)
 	}
