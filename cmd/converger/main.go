@@ -64,6 +64,7 @@ const (
 )
 
 func main() {
+	cf_debug_server.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	logger := cf_lager.New("converger")
@@ -71,8 +72,6 @@ func main() {
 	initializeDropsonde(logger)
 
 	bbs := initializeBBS(logger)
-
-	cf_debug_server.Run()
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
@@ -90,10 +89,18 @@ func main() {
 		*expireCompletedTaskDuration,
 	)
 
-	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
+	members := grouper.Members{
 		{"heartbeater", heartbeater},
 		{"converger", converger},
-	})
+	}
+
+	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+		members = append(grouper.Members{
+			{"debug-server", cf_debug_server.Runner(dbgAddr)},
+		}, members...)
+	}
+
+	group := grouper.NewOrdered(os.Interrupt, members)
 
 	logger.Info("started-waiting-for-lock")
 
