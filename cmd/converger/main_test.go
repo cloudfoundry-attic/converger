@@ -12,6 +12,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
@@ -33,6 +34,8 @@ var _ = Describe("Converger", func() {
 		etcdClient storeadapter.StoreAdapter
 
 		convergeRepeatInterval = time.Second
+
+		logger lager.Logger
 	)
 
 	SynchronizedBeforeSuite(func() []byte {
@@ -45,7 +48,8 @@ var _ = Describe("Converger", func() {
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 
 		etcdClient = etcdRunner.Adapter()
-		bbs = Bbs.NewBBS(etcdClient, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		logger = lagertest.NewTestLogger("test")
+		bbs = Bbs.NewBBS(etcdClient, timeprovider.NewTimeProvider(), logger)
 
 		runner = converger_runner.New(string(convergerBinPath), etcdCluster, "info")
 	})
@@ -91,10 +95,10 @@ var _ = Describe("Converger", func() {
 			},
 		}
 
-		err := bbs.DesireTask(task)
+		err := bbs.DesireTask(logger, task)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = bbs.StartTask(task.TaskGuid, "dead-cell")
+		err = bbs.StartTask(logger, task.TaskGuid, "dead-cell")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
@@ -103,7 +107,9 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(createRunningTaskWithDeadCell)
 
 			It("does not converge the task", func() {
-				Consistently(bbs.CompletedTasks, 5).Should(BeEmpty())
+				Consistently(func() ([]models.Task, error) {
+					return bbs.CompletedTasks(logger)
+				}, 5).Should(BeEmpty())
 			})
 		})
 	}
@@ -113,11 +119,16 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(createRunningTaskWithDeadCell)
 
 			It("marks the task as completed and failed", func() {
-				Consistently(bbs.CompletedTasks, 0.5).Should(BeEmpty())
+				Consistently(func() ([]models.Task, error) {
+					return bbs.CompletedTasks(logger)
+				}, 0.5).Should(BeEmpty())
 
 				startConverger()
 
-				Eventually(bbs.CompletedTasks, 0.5).Should(HaveLen(1))
+				Eventually(func() ([]models.Task, error) {
+					return bbs.CompletedTasks(logger)
+				}, 0.5).Should(HaveLen(1))
+
 			})
 		})
 	})
@@ -162,7 +173,9 @@ var _ = Describe("Converger", func() {
 				JustBeforeEach(createRunningTaskWithDeadCell)
 
 				It("eventually marks the task as failed", func() {
-					Eventually(bbs.CompletedTasks, taskKickInterval*2).Should(HaveLen(1))
+					Eventually(func() ([]models.Task, error) {
+						return bbs.CompletedTasks(logger)
+					}, taskKickInterval*2).Should(HaveLen(1))
 				})
 			})
 		})
