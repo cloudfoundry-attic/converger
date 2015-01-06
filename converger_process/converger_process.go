@@ -70,20 +70,12 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-
-				tickLog.Info("starting-tasks")
-				defer tickLog.Info("finished-tasks")
-
 				c.bbs.ConvergeTasks(tickLog, c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
 			}()
 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-
-				tickLog.Info("starting-lrps")
-				defer tickLog.Info("finished-lrps")
-
 				c.bbs.ConvergeLRPs(tickLog, c.convergeRepeatInterval)
 			}()
 
