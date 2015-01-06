@@ -84,7 +84,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 				tickLog.Info("starting-lrps")
 				defer tickLog.Info("finished-lrps")
 
-				c.bbs.ConvergeLRPs(c.convergeRepeatInterval)
+				c.bbs.ConvergeLRPs(tickLog, c.convergeRepeatInterval)
 			}()
 
 			wg.Wait()
