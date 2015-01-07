@@ -98,7 +98,7 @@ var _ = Describe("Converger", func() {
 		err := bbs.DesireTask(logger, task)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = bbs.StartTask(logger, task.TaskGuid, "dead-cell")
+		_, err = bbs.StartTask(logger, task.TaskGuid, "dead-cell")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
