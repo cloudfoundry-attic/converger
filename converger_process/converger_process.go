@@ -9,12 +9,15 @@ import (
 	"github.com/pivotal-golang/lager"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
+	"github.com/cloudfoundry/gunk/timeprovider"
 )
 
 type ConvergerProcess struct {
 	id                          string
 	bbs                         Bbs.ConvergerBBS
 	logger                      lager.Logger
+	timeProvider                timeprovider.TimeProvider
 	convergeRepeatInterval      time.Duration
 	kickPendingTaskDuration     time.Duration
 	expirePendingTaskDuration   time.Duration
@@ -25,6 +28,7 @@ type ConvergerProcess struct {
 func New(
 	bbs Bbs.ConvergerBBS,
 	logger lager.Logger,
+	timeProvider timeprovider.TimeProvider,
 	convergeRepeatInterval,
 	kickPendingTaskDuration,
 	expirePendingTaskDuration,
@@ -40,6 +44,7 @@ func New(
 		id:                          uuid.String(),
 		bbs:                         bbs,
 		logger:                      logger,
+		timeProvider:                timeProvider,
 		convergeRepeatInterval:      convergeRepeatInterval,
 		kickPendingTaskDuration:     kickPendingTaskDuration,
 		expirePendingTaskDuration:   expirePendingTaskDuration,
@@ -49,8 +54,32 @@ func New(
 }
 
 func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	ticker := time.NewTicker(c.convergeRepeatInterval)
-	defer ticker.Stop()
+	convergeTimer := c.timeProvider.NewTimer(c.convergeRepeatInterval)
+	defer convergeTimer.Stop()
+
+	cellDisappeared := make(chan struct{}, 1)
+
+	logger := c.logger.WithData(lager.Data{
+		"expire-pending-task-duration": c.expirePendingTaskDuration.String(),
+		"kick-pending-task-duration":   c.kickPendingTaskDuration.String(),
+	})
+
+	go func() {
+		for {
+			event, err := c.bbs.WaitForCellEvent()
+			if err != nil {
+				c.logger.Error("failed-to-wait-for-cell-event", err)
+			} else {
+				switch event.EventType() {
+				case services_bbs.CellDisappeared:
+					select {
+					case cellDisappeared <- struct{}{}:
+					default:
+					}
+				}
+			}
+		}
+	}()
 
 	close(ready)
 
@@ -59,27 +88,31 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 		case <-signals:
 			return nil
 
-		case <-ticker.C:
-			tickLog := c.logger.Session("converge-tick", lager.Data{
-				"expire-pending-task-duration": c.expirePendingTaskDuration.String(),
-				"kick-pending-task-duration":   c.kickPendingTaskDuration.String(),
-			})
+		case <-cellDisappeared:
+			c.converge(logger.Session("cell-disappeared"))
 
-			wg := sync.WaitGroup{}
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				c.bbs.ConvergeTasks(tickLog, c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
-			}()
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				c.bbs.ConvergeLRPs(tickLog, c.convergeRepeatInterval)
-			}()
-
-			wg.Wait()
+		case <-convergeTimer.C():
+			c.converge(logger.Session("converge-tick"))
 		}
+
+		convergeTimer.Reset(c.convergeRepeatInterval)
 	}
+}
+
+func (c *ConvergerProcess) converge(tickLog lager.Logger) {
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.bbs.ConvergeTasks(tickLog, c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.bbs.ConvergeLRPs(tickLog, c.convergeRepeatInterval)
+	}()
+
+	wg.Wait()
 }

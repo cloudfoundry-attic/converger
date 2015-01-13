@@ -84,6 +84,7 @@ func main() {
 	converger := converger_process.New(
 		bbs,
 		logger,
+		timeprovider.NewTimeProvider(),
 		*convergeRepeatInterval,
 		*kickPendingTaskDuration,
 		*expirePendingTaskDuration,
