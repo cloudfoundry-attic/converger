@@ -111,7 +111,7 @@ func (c *ConvergerProcess) converge(tickLog lager.Logger) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.bbs.ConvergeLRPs(tickLog, c.convergeRepeatInterval)
+		c.bbs.ConvergeLRPs(tickLog)
 	}()
 
 	wg.Wait()
