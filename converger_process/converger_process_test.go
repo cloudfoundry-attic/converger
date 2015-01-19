@@ -94,9 +94,6 @@ var _ = Describe("ConvergerProcess", func() {
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
 
-			_, resendStartAuctionTimeout := fakeBBS.ConvergeLRPsArgsForCall(0)
-			Ω(resendStartAuctionTimeout).Should(Equal(convergeRepeatInterval))
-
 			fakeTimeProvider.Increment(convergeRepeatInterval + aBit)
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
@@ -106,9 +103,6 @@ var _ = Describe("ConvergerProcess", func() {
 			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
-
-			_, resendStartAuctionTimeout = fakeBBS.ConvergeLRPsArgsForCall(1)
-			Ω(resendStartAuctionTimeout).Should(Equal(convergeRepeatInterval))
 		})
 	})
 
@@ -133,9 +127,6 @@ var _ = Describe("ConvergerProcess", func() {
 			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
-
-			_, resendStartAuctionTimeout := fakeBBS.ConvergeLRPsArgsForCall(0)
-			Ω(resendStartAuctionTimeout).Should(Equal(convergeRepeatInterval))
 
 			waitEvents <- services_bbs.CellAppearedEvent{
 				Presence: models.CellPresence{
