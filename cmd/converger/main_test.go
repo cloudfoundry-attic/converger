@@ -49,7 +49,7 @@ var _ = Describe("Converger", func() {
 
 		etcdClient = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdClient, clock.NewClock(), models.NewDefaultRestartCalculator(), logger)
+		bbs = Bbs.NewBBS(etcdClient, clock.NewClock(), logger)
 
 		runner = converger_runner.New(string(convergerBinPath), etcdCluster, "info")
 	})
