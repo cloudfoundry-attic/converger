@@ -11,9 +11,9 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/clock/fakeclock"
 
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 )
@@ -24,7 +24,7 @@ var _ = Describe("ConvergerProcess", func() {
 	var (
 		fakeBBS                     *fake_bbs.FakeConvergerBBS
 		logger                      *lagertest.TestLogger
-		fakeTimeProvider            *faketimeprovider.FakeTimeProvider
+		fakeClock                   *fakeclock.FakeClock
 		convergeRepeatInterval      time.Duration
 		kickPendingTaskDuration     time.Duration
 		expirePendingTaskDuration   time.Duration
@@ -39,7 +39,7 @@ var _ = Describe("ConvergerProcess", func() {
 	BeforeEach(func() {
 		fakeBBS = new(fake_bbs.FakeConvergerBBS)
 		logger = lagertest.NewTestLogger("test")
-		fakeTimeProvider = faketimeprovider.New(time.Now())
+		fakeClock = fakeclock.NewFakeClock(time.Now())
 
 		convergeRepeatInterval = 1 * time.Second
 
@@ -68,7 +68,7 @@ var _ = Describe("ConvergerProcess", func() {
 			converger_process.New(
 				fakeBBS,
 				logger,
-				fakeTimeProvider,
+				fakeClock,
 				convergeRepeatInterval,
 				kickPendingTaskDuration,
 				expirePendingTaskDuration,
@@ -84,7 +84,7 @@ var _ = Describe("ConvergerProcess", func() {
 
 	Describe("converging over time", func() {
 		It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
-			fakeTimeProvider.Increment(convergeRepeatInterval + aBit)
+			fakeClock.Increment(convergeRepeatInterval + aBit)
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
@@ -94,7 +94,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
 
-			fakeTimeProvider.Increment(convergeRepeatInterval + aBit)
+			fakeClock.Increment(convergeRepeatInterval + aBit)
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
@@ -156,7 +156,7 @@ var _ = Describe("ConvergerProcess", func() {
 		})
 
 		It("defers convergence to one full interval later", func() {
-			fakeTimeProvider.Increment(convergeRepeatInterval - aBit)
+			fakeClock.Increment(convergeRepeatInterval - aBit)
 
 			waitEvents <- services_bbs.CellDisappearedEvent{
 				Presence: models.CellPresence{
@@ -170,12 +170,12 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			fakeTimeProvider.Increment(2 * aBit)
+			fakeClock.Increment(2 * aBit)
 
 			Consistently(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Consistently(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			fakeTimeProvider.Increment(convergeRepeatInterval + aBit)
+			fakeClock.Increment(convergeRepeatInterval + aBit)
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 		})

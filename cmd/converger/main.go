@@ -13,10 +13,10 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -93,7 +93,7 @@ func main() {
 	converger := converger_process.New(
 		bbs,
 		logger,
-		timeprovider.NewTimeProvider(),
+		clock.NewClock(),
 		*convergeRepeatInterval,
 		*kickPendingTaskDuration,
 		*expirePendingTaskDuration,
@@ -139,7 +139,7 @@ func initializeBBS(logger lager.Logger) Bbs.ConvergerBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewConvergerBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	return Bbs.NewConvergerBBS(etcdAdapter, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {

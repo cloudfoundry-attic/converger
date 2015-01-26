@@ -10,14 +10,14 @@ import (
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
-	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/pivotal-golang/clock"
 )
 
 type ConvergerProcess struct {
 	id                          string
 	bbs                         Bbs.ConvergerBBS
 	logger                      lager.Logger
-	timeProvider                timeprovider.TimeProvider
+	clock                       clock.Clock
 	convergeRepeatInterval      time.Duration
 	kickPendingTaskDuration     time.Duration
 	expirePendingTaskDuration   time.Duration
@@ -28,7 +28,7 @@ type ConvergerProcess struct {
 func New(
 	bbs Bbs.ConvergerBBS,
 	logger lager.Logger,
-	timeProvider timeprovider.TimeProvider,
+	clock clock.Clock,
 	convergeRepeatInterval,
 	kickPendingTaskDuration,
 	expirePendingTaskDuration,
@@ -41,10 +41,10 @@ func New(
 	}
 
 	return &ConvergerProcess{
-		id:                          uuid.String(),
-		bbs:                         bbs,
-		logger:                      logger,
-		timeProvider:                timeProvider,
+		id:     uuid.String(),
+		bbs:    bbs,
+		logger: logger,
+		clock:  clock,
 		convergeRepeatInterval:      convergeRepeatInterval,
 		kickPendingTaskDuration:     kickPendingTaskDuration,
 		expirePendingTaskDuration:   expirePendingTaskDuration,
@@ -54,7 +54,7 @@ func New(
 }
 
 func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	convergeTimer := c.timeProvider.NewTimer(c.convergeRepeatInterval)
+	convergeTimer := c.clock.NewTimer(c.convergeRepeatInterval)
 	defer convergeTimer.Stop()
 
 	cellDisappeared := make(chan struct{}, 1)

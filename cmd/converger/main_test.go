@@ -5,13 +5,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -49,7 +49,7 @@ var _ = Describe("Converger", func() {
 
 		etcdClient = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdClient, timeprovider.NewTimeProvider(), models.NewDefaultRestartCalculator(), logger)
+		bbs = Bbs.NewBBS(etcdClient, clock.NewClock(), models.NewDefaultRestartCalculator(), logger)
 
 		runner = converger_runner.New(string(convergerBinPath), etcdCluster, "info")
 	})
