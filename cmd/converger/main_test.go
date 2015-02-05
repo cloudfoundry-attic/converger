@@ -127,8 +127,7 @@ var _ = Describe("Converger", func() {
 
 				Eventually(func() ([]models.Task, error) {
 					return bbs.CompletedTasks(logger)
-				}, 0.5).Should(HaveLen(1))
-
+				}).Should(HaveLen(1))
 			})
 		})
 	})
