@@ -22,18 +22,20 @@ import (
 )
 
 var _ = Describe("Converger", func() {
+	const (
+		exitDuration = 4 * time.Second
+	)
+
 	var (
 		etcdRunner *etcdstorerunner.ETCDClusterRunner
 		bbs        *Bbs.BBS
 		runner     *converger_runner.ConvergerRunner
 
-		taskKickInterval = 1 * time.Second
-
-		expireCompletedTaskDuration = 3 * time.Second
+		convergeRepeatInterval      time.Duration
+		taskKickInterval            time.Duration
+		expireCompletedTaskDuration time.Duration
 
 		etcdClient storeadapter.StoreAdapter
-
-		convergeRepeatInterval = time.Second
 
 		logger lager.Logger
 	)
@@ -71,6 +73,10 @@ var _ = Describe("Converger", func() {
 			Key:   shared.CellSchemaPath(cellPresence.CellID),
 			Value: value,
 		})
+
+		convergeRepeatInterval = 200 * time.Millisecond
+		taskKickInterval = convergeRepeatInterval
+		expireCompletedTaskDuration = 3 * convergeRepeatInterval
 	})
 
 	AfterEach(func() {
@@ -109,7 +115,7 @@ var _ = Describe("Converger", func() {
 			It("does not converge the task", func() {
 				Consistently(func() ([]models.Task, error) {
 					return bbs.CompletedTasks(logger)
-				}, 5).Should(BeEmpty())
+				}, 3*convergeRepeatInterval).Should(BeEmpty())
 			})
 		})
 	}
@@ -127,7 +133,7 @@ var _ = Describe("Converger", func() {
 
 				Eventually(func() ([]models.Task, error) {
 					return bbs.CompletedTasks(logger)
-				}).Should(HaveLen(1))
+				}, 3*convergeRepeatInterval).Should(HaveLen(1))
 			})
 		})
 	})
@@ -143,7 +149,7 @@ var _ = Describe("Converger", func() {
 		})
 
 		It("exits with an error", func() {
-			Eventually(runner.Session.ExitCode, 5*time.Second).Should(Equal(1))
+			Eventually(runner.Session, exitDuration).Should(gexec.Exit(1))
 		})
 	})
 
@@ -174,7 +180,7 @@ var _ = Describe("Converger", func() {
 				It("eventually marks the task as failed", func() {
 					Eventually(func() ([]models.Task, error) {
 						return bbs.CompletedTasks(logger)
-					}, taskKickInterval*2).Should(HaveLen(1))
+					}, 3*convergeRepeatInterval).Should(HaveLen(1))
 				})
 			})
 		})
@@ -188,14 +194,14 @@ var _ = Describe("Converger", func() {
 		Describe("when it receives SIGINT", func() {
 			It("exits successfully", func() {
 				runner.Session.Command.Process.Signal(syscall.SIGINT)
-				Eventually(runner.Session, 4).Should(gexec.Exit(0))
+				Eventually(runner.Session, exitDuration).Should(gexec.Exit(0))
 			})
 		})
 
 		Describe("when it receives SIGTERM", func() {
 			It("exits successfully", func() {
 				runner.Session.Command.Process.Signal(syscall.SIGTERM)
-				Eventually(runner.Session, 4).Should(gexec.Exit(0))
+				Eventually(runner.Session, exitDuration).Should(gexec.Exit(0))
 			})
 		})
 	})
