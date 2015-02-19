@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -141,10 +142,12 @@ var _ = Describe("Converger", func() {
 	Context("when the converger loses the lock", func() {
 		BeforeEach(func() {
 			startConverger()
+			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("acquired-lock"))
 			err := etcdClient.Update(storeadapter.StoreNode{
 				Key:   shared.LockSchemaPath("converge_lock"),
 				Value: []byte("something-else"),
 			})
+
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
