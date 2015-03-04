@@ -57,7 +57,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	convergeTimer := c.clock.NewTimer(c.convergeRepeatInterval)
 	defer convergeTimer.Stop()
 
-	cellDisappeared := make(chan struct{}, 1)
+	cellDisappeared := make(chan services_bbs.CellEvent, 1)
 
 	logger := c.logger.WithData(lager.Data{
 		"expire-pending-task-duration": c.expirePendingTaskDuration.String(),
@@ -72,10 +72,13 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			} else {
 				switch event.EventType() {
 				case services_bbs.CellDisappeared:
+					c.logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellID()})
 					select {
-					case cellDisappeared <- struct{}{}:
+					case cellDisappeared <- event:
 					default:
 					}
+				case services_bbs.CellAppeared:
+					c.logger.Debug("received-cell-appeared-event", lager.Data{"cell-id": event.CellID()})
 				}
 			}
 		}
@@ -88,8 +91,8 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 		case <-signals:
 			return nil
 
-		case <-cellDisappeared:
-			c.converge(logger.Session("cell-disappeared"))
+		case event := <-cellDisappeared:
+			c.converge(logger.Session("cell-disappeared", lager.Data{"cell-id": event.CellID()}))
 
 		case <-convergeTimer.C():
 			c.converge(logger.Session("converge-tick"))
