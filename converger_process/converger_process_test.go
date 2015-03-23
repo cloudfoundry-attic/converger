@@ -114,7 +114,6 @@ var _ = Describe("ConvergerProcess", func() {
 			waitEvents <- services_bbs.CellDisappearedEvent{
 				Presence: models.CellPresence{
 					CellID:     "some-cell-id",
-					Stack:      "some-stack",
 					RepAddress: "some-rep-addr",
 					Zone:       "autozone",
 				},
@@ -131,7 +130,6 @@ var _ = Describe("ConvergerProcess", func() {
 			waitEvents <- services_bbs.CellAppearedEvent{
 				Presence: models.CellPresence{
 					CellID:     "some-cell-id",
-					Stack:      "some-stack",
 					RepAddress: "some-rep-addr",
 					Zone:       "autozone",
 				},
@@ -145,7 +143,6 @@ var _ = Describe("ConvergerProcess", func() {
 			waitEvents <- services_bbs.CellDisappearedEvent{
 				Presence: models.CellPresence{
 					CellID:     "some-cell-id",
-					Stack:      "some-stack",
 					RepAddress: "some-rep-addr",
 					Zone:       "autozone",
 				},
@@ -161,7 +158,6 @@ var _ = Describe("ConvergerProcess", func() {
 			waitEvents <- services_bbs.CellDisappearedEvent{
 				Presence: models.CellPresence{
 					CellID:     "some-cell-id",
-					Stack:      "some-stack",
 					RepAddress: "some-rep-addr",
 					Zone:       "autozone",
 				},
