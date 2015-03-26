@@ -1,9 +1,11 @@
 package converger_runner
 
 import (
+	"fmt"
 	"os/exec"
 	"time"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -18,14 +20,16 @@ type ConvergerRunner struct {
 
 type Config struct {
 	etcdCluster string
+	consulPort  int
 	logLevel    string
 }
 
-func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
+func New(binPath, etcdCluster string, consulPort int, logLevel string) *ConvergerRunner {
 	return &ConvergerRunner{
 		binPath: binPath,
 		config: Config{
 			etcdCluster: etcdCluster,
+			consulPort:  consulPort,
 			logLevel:    logLevel,
 		},
 	}
@@ -45,7 +49,9 @@ func (r *ConvergerRunner) Start(convergeRepeatInterval, kickPendingTaskDuration,
 			"-kickPendingTaskDuration", kickPendingTaskDuration.String(),
 			"-expirePendingTaskDuration", expirePendingTaskDuration.String(),
 			"-expireCompletedTaskDuration", expireCompletedTaskDuration.String(),
-			"-heartbeatInterval", "1s",
+			"-heartbeatRetryInterval", "1s",
+			"-consulCluster", fmt.Sprintf("127.0.0.1:%d", r.config.consulPort+consuladapter.PortOffsetHTTP),
+			"-consulScheme", "http",
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),

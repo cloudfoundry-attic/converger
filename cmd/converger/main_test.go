@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
+	"github.com/hashicorp/consul/consul/structs"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -16,6 +17,7 @@ import (
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
@@ -31,6 +33,10 @@ var _ = Describe("Converger", func() {
 		etcdRunner *etcdstorerunner.ETCDClusterRunner
 		bbs        *Bbs.BBS
 		runner     *converger_runner.ConvergerRunner
+
+		consulPort    int
+		consulRunner  consuladapter.ClusterRunner
+		consulAdapter consuladapter.Adapter
 
 		convergeRepeatInterval      time.Duration
 		taskKickInterval            time.Duration
@@ -51,10 +57,17 @@ var _ = Describe("Converger", func() {
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 
 		etcdClient = etcdRunner.Adapter()
-		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdClient, clock.NewClock(), logger)
 
-		runner = converger_runner.New(string(convergerBinPath), etcdCluster, "info")
+		consulPort = 9001 + config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength
+		consulRunner = consuladapter.NewClusterRunner(
+			consulPort,
+			1,
+			"http",
+		)
+
+		logger = lagertest.NewTestLogger("test")
+
+		runner = converger_runner.New(string(convergerBinPath), etcdCluster, consulPort, "info")
 	})
 
 	SynchronizedAfterSuite(func() {
@@ -65,15 +78,23 @@ var _ = Describe("Converger", func() {
 
 	BeforeEach(func() {
 		etcdRunner.Start()
+		consulRunner.Start()
+
+		consulAdapter = consulRunner.NewAdapter()
+		bbs = Bbs.NewBBS(etcdClient, consulAdapter, clock.NewClock(), logger)
+
 		capacity := models.NewCellCapacity(512, 1024, 124)
 		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity)
 
 		value, err := models.ToJSON(cellPresence)
 		Ω(err).ShouldNot(HaveOccurred())
-		etcdClient.Create(storeadapter.StoreNode{
-			Key:   shared.CellSchemaPath(cellPresence.CellID),
-			Value: value,
-		})
+
+		_, err = consulAdapter.AcquireAndMaintainLock(
+			shared.CellSchemaPath(cellPresence.CellID),
+			value,
+			structs.SessionTTLMin,
+			nil)
+		Ω(err).ShouldNot(HaveOccurred())
 
 		convergeRepeatInterval = 500 * time.Millisecond
 		taskKickInterval = convergeRepeatInterval
@@ -82,6 +103,7 @@ var _ = Describe("Converger", func() {
 
 	AfterEach(func() {
 		runner.KillWithFire()
+		consulRunner.Stop()
 		etcdRunner.Stop()
 	})
 
@@ -143,12 +165,8 @@ var _ = Describe("Converger", func() {
 		BeforeEach(func() {
 			startConverger()
 			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("acquired-lock"))
-			err := etcdClient.Update(storeadapter.StoreNode{
-				Key:   shared.LockSchemaPath("converge_lock"),
-				Value: []byte("something-else"),
-			})
 
-			Ω(err).ShouldNot(HaveOccurred())
+			consulRunner.Reset()
 		})
 
 		It("exits with an error", func() {
@@ -157,11 +175,13 @@ var _ = Describe("Converger", func() {
 	})
 
 	Context("when the converger initially does not have the lock", func() {
+
 		BeforeEach(func() {
-			err := etcdClient.Create(storeadapter.StoreNode{
-				Key:   shared.LockSchemaPath("converge_lock"),
-				Value: []byte("something-else"),
-			})
+			_, err := consulAdapter.AcquireAndMaintainLock(
+				shared.LockSchemaPath("converge_lock"),
+				[]byte("something-else"),
+				structs.SessionTTLMin,
+				nil)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			startConverger()
@@ -171,9 +191,8 @@ var _ = Describe("Converger", func() {
 
 		Describe("when the lock becomes available", func() {
 			BeforeEach(func() {
-				err := etcdClient.Delete(shared.LockSchemaPath("converge_lock"))
+				err := consulAdapter.ReleaseAndDeleteLock(shared.LockSchemaPath("converge_lock"))
 				Ω(err).ShouldNot(HaveOccurred())
-
 				time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
 			})
 

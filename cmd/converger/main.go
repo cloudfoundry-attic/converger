@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
@@ -29,10 +30,28 @@ var etcdCluster = flag.String(
 	"comma-separated list of etcd addresses (http://ip:port)",
 )
 
-var heartbeatInterval = flag.Duration(
-	"heartbeatInterval",
-	lock_bbs.HEARTBEAT_INTERVAL,
-	"the interval between heartbeats to the lock",
+var consulCluster = flag.String(
+	"consulCluster",
+	"",
+	"comma-separated list of consul server addresses (ip:port)",
+)
+
+var consulScheme = flag.String(
+	"consulScheme",
+	"http",
+	"protocol scheme for communication with consul servers",
+)
+
+var lockTTL = flag.Duration(
+	"lockTTL",
+	lock_bbs.LockTTL,
+	"TTL for service lock",
+)
+
+var heartbeatRetryInterval = flag.Duration(
+	"heartbeatRetryInterval",
+	lock_bbs.RetryInterval,
+	"interval to wait before retrying a failed lock acquisition",
 )
 
 var convergeRepeatInterval = flag.Duration(
@@ -81,14 +100,22 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	bbs := initializeBBS(logger)
+	consulAdapter, err := consuladapter.NewAdapter(
+		strings.Split(*consulCluster, ","),
+		*consulScheme,
+	)
+	if err != nil {
+		logger.Fatal("failed-building-consul-adapter", err)
+	}
+
+	bbs := initializeBBS(logger, consulAdapter)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	heartbeater := bbs.NewConvergeLock(uuid.String(), *heartbeatInterval)
+	heartbeater := bbs.NewConvergeLock(uuid.String(), *lockTTL, *heartbeatRetryInterval)
 
 	converger := converger_process.New(
 		bbs,
@@ -113,11 +140,9 @@ func main() {
 
 	group := grouper.NewOrdered(os.Interrupt, members)
 
-	logger.Info("started-waiting-for-lock")
-
 	process := ifrit.Invoke(sigmon.New(group))
 
-	logger.Info("acquired-lock")
+	logger.Info("started")
 
 	err = <-process.Wait()
 	if err != nil {
@@ -128,7 +153,7 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeBBS(logger lager.Logger) Bbs.ConvergerBBS {
+func initializeBBS(logger lager.Logger, adapter consuladapter.Adapter) Bbs.ConvergerBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workpool.NewWorkPool(10),
@@ -139,7 +164,7 @@ func initializeBBS(logger lager.Logger) Bbs.ConvergerBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewConvergerBBS(etcdAdapter, clock.NewClock(), logger)
+	return Bbs.NewConvergerBBS(etcdAdapter, adapter, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {

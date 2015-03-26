@@ -10,7 +10,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -112,11 +111,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Consistently(fakeBBS.ConvergeLRPsCallCount).Should(Equal(0))
 
 			waitEvents <- services_bbs.CellDisappearedEvent{
-				Presence: models.CellPresence{
-					CellID:     "some-cell-id",
-					RepAddress: "some-rep-addr",
-					Zone:       "autozone",
-				},
+				IDs: []string{"some-cell-id"},
 			}
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
@@ -127,25 +122,10 @@ var _ = Describe("ConvergerProcess", func() {
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
 
-			waitEvents <- services_bbs.CellAppearedEvent{
-				Presence: models.CellPresence{
-					CellID:     "some-cell-id",
-					RepAddress: "some-rep-addr",
-					Zone:       "autozone",
-				},
-			}
-
-			Consistently(fakeBBS.ConvergeTasksCallCount).Should(Equal(1))
-			Consistently(fakeBBS.ConvergeLRPsCallCount).Should(Equal(1))
-
 			waitErrs <- errors.New("whoopsie")
 
 			waitEvents <- services_bbs.CellDisappearedEvent{
-				Presence: models.CellPresence{
-					CellID:     "some-cell-id",
-					RepAddress: "some-rep-addr",
-					Zone:       "autozone",
-				},
+				IDs: []string{"some-cell-id"},
 			}
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
@@ -156,11 +136,7 @@ var _ = Describe("ConvergerProcess", func() {
 			fakeClock.Increment(convergeRepeatInterval - aBit)
 
 			waitEvents <- services_bbs.CellDisappearedEvent{
-				Presence: models.CellPresence{
-					CellID:     "some-cell-id",
-					RepAddress: "some-rep-addr",
-					Zone:       "autozone",
-				},
+				IDs: []string{"some-cell-id"},
 			}
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))

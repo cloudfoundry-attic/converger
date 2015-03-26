@@ -72,13 +72,11 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			} else {
 				switch event.EventType() {
 				case services_bbs.CellDisappeared:
-					c.logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellID()})
+					c.logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
 					select {
 					case cellDisappeared <- event:
 					default:
 					}
-				case services_bbs.CellAppeared:
-					c.logger.Debug("received-cell-appeared-event", lager.Data{"cell-id": event.CellID()})
 				}
 			}
 		}
@@ -92,7 +90,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			return nil
 
 		case event := <-cellDisappeared:
-			c.converge(logger.Session("cell-disappeared", lager.Data{"cell-id": event.CellID()}))
+			c.converge(logger.Session("cell-disappeared", lager.Data{"cell-id": event.CellIDs()}))
 
 		case <-convergeTimer.C():
 			c.converge(logger.Session("converge-tick"))
