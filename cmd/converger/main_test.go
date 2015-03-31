@@ -34,8 +34,7 @@ var _ = Describe("Converger", func() {
 		bbs        *Bbs.BBS
 		runner     *converger_runner.ConvergerRunner
 
-		consulPort    int
-		consulRunner  consuladapter.ClusterRunner
+		consulRunner  *consuladapter.ClusterRunner
 		consulAdapter consuladapter.Adapter
 
 		convergeRepeatInterval      time.Duration
@@ -58,16 +57,15 @@ var _ = Describe("Converger", func() {
 
 		etcdClient = etcdRunner.Adapter()
 
-		consulPort = 9001 + config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength
 		consulRunner = consuladapter.NewClusterRunner(
-			consulPort,
+			9001+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength,
 			1,
 			"http",
 		)
 
 		logger = lagertest.NewTestLogger("test")
 
-		runner = converger_runner.New(string(convergerBinPath), etcdCluster, consulPort, "info")
+		runner = converger_runner.New(string(convergerBinPath), etcdCluster, consulRunner.ConsulCluster(), "info")
 	})
 
 	SynchronizedAfterSuite(func() {
@@ -164,7 +162,7 @@ var _ = Describe("Converger", func() {
 	Context("when the converger loses the lock", func() {
 		BeforeEach(func() {
 			startConverger()
-			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("acquired-lock"))
+			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("succeeded-acquiring-lock"))
 
 			consulRunner.Reset()
 		})
