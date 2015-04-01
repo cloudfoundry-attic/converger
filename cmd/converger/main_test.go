@@ -79,7 +79,7 @@ var _ = Describe("Converger", func() {
 		consulRunner.Start()
 
 		consulAdapter = consulRunner.NewAdapter()
-		bbs = Bbs.NewBBS(etcdClient, consulAdapter, clock.NewClock(), logger)
+		bbs = Bbs.NewBBS(etcdClient, consulAdapter, "http://receptor.bogus.com", clock.NewClock(), logger)
 
 		capacity := models.NewCellCapacity(512, 1024, 124)
 		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity)
