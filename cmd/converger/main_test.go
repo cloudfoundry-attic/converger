@@ -87,6 +87,7 @@ var _ = Describe("Converger", func() {
 		value, err := models.ToJSON(cellPresence)
 		Ω(err).ShouldNot(HaveOccurred())
 
+		consulRunner.WaitUntilReady()
 		_, err = consulAdapter.AcquireAndMaintainLock(
 			shared.CellSchemaPath(cellPresence.CellID),
 			value,
