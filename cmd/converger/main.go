@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
-	"github.com/cloudfoundry-incubator/cf-lager"
+	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
@@ -121,6 +121,7 @@ func main() {
 
 	converger := converger_process.New(
 		bbs,
+		consulAdapter,
 		logger,
 		clock.NewClock(),
 		*convergeRepeatInterval,
@@ -155,7 +156,7 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeBBS(logger lager.Logger, adapter consuladapter.Adapter) Bbs.ConvergerBBS {
+func initializeBBS(logger lager.Logger, adapter *consuladapter.Adapter) Bbs.ConvergerBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workpool.NewWorkPool(10),

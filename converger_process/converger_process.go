@@ -8,6 +8,7 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/pivotal-golang/clock"
@@ -16,6 +17,7 @@ import (
 type ConvergerProcess struct {
 	id                          string
 	bbs                         Bbs.ConvergerBBS
+	consulAdapter               *consuladapter.Adapter
 	logger                      lager.Logger
 	clock                       clock.Clock
 	convergeRepeatInterval      time.Duration
@@ -27,6 +29,7 @@ type ConvergerProcess struct {
 
 func New(
 	bbs Bbs.ConvergerBBS,
+	consulAdapter *consuladapter.Adapter,
 	logger lager.Logger,
 	clock clock.Clock,
 	convergeRepeatInterval,
@@ -41,10 +44,11 @@ func New(
 	}
 
 	return &ConvergerProcess{
-		id:     uuid.String(),
-		bbs:    bbs,
-		logger: logger,
-		clock:  clock,
+		id:            uuid.String(),
+		bbs:           bbs,
+		consulAdapter: consulAdapter,
+		logger:        logger,
+		clock:         clock,
 		convergeRepeatInterval:      convergeRepeatInterval,
 		kickPendingTaskDuration:     kickPendingTaskDuration,
 		expirePendingTaskDuration:   expirePendingTaskDuration,
@@ -101,18 +105,19 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 }
 
 func (c *ConvergerProcess) converge(tickLog lager.Logger) {
+	cellsLoader := services_bbs.NewCellsLoader(c.logger, c.consulAdapter, c.clock)
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.bbs.ConvergeTasks(tickLog, c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration)
+		c.bbs.ConvergeTasks(tickLog, c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration, cellsLoader)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.bbs.ConvergeLRPs(tickLog)
+		c.bbs.ConvergeLRPs(tickLog, cellsLoader)
 	}()
 
 	wg.Wait()

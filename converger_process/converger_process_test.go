@@ -66,6 +66,7 @@ var _ = Describe("ConvergerProcess", func() {
 		process = ifrit.Invoke(
 			converger_process.New(
 				fakeBBS,
+				nil,
 				logger,
 				fakeClock,
 				convergeRepeatInterval,
@@ -88,7 +89,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			_, timeToClaim, convergenceInterval, timeToResolve := fakeBBS.ConvergeTasksArgsForCall(0)
+			_, timeToClaim, convergenceInterval, timeToResolve, _ := fakeBBS.ConvergeTasksArgsForCall(0)
 			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
@@ -98,7 +99,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 
-			_, timeToClaim, convergenceInterval, timeToResolve = fakeBBS.ConvergeTasksArgsForCall(1)
+			_, timeToClaim, convergenceInterval, timeToResolve, _ = fakeBBS.ConvergeTasksArgsForCall(1)
 			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
@@ -117,7 +118,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			_, timeToClaim, convergenceInterval, timeToResolve := fakeBBS.ConvergeTasksArgsForCall(0)
+			_, timeToClaim, convergenceInterval, timeToResolve, _ := fakeBBS.ConvergeTasksArgsForCall(0)
 			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
 			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
 			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))

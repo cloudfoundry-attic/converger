@@ -35,7 +35,7 @@ var _ = Describe("Converger", func() {
 		runner     *converger_runner.ConvergerRunner
 
 		consulRunner  *consuladapter.ClusterRunner
-		consulAdapter consuladapter.Adapter
+		consulAdapter *consuladapter.Adapter
 
 		convergeRepeatInterval      time.Duration
 		taskKickInterval            time.Duration
