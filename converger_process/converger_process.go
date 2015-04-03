@@ -105,7 +105,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 }
 
 func (c *ConvergerProcess) converge(tickLog lager.Logger) {
-	cellsLoader := services_bbs.NewCellsLoader(c.logger, c.consulAdapter, c.clock)
+	cellsLoader := c.bbs.NewCellsLoader()
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
