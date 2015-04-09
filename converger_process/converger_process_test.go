@@ -52,14 +52,7 @@ var _ = Describe("ConvergerProcess", func() {
 		waitEvents = cellEvents
 		waitErrs = errs
 
-		fakeBBS.WaitForCellEventStub = func() (services_bbs.CellEvent, error) {
-			select {
-			case e := <-cellEvents:
-				return e, nil
-			case err := <-errs:
-				return nil, err
-			}
-		}
+		fakeBBS.CellEventsReturns(cellEvents)
 	})
 
 	JustBeforeEach(func() {

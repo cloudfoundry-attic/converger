@@ -17,7 +17,7 @@ import (
 type ConvergerProcess struct {
 	id                          string
 	bbs                         Bbs.ConvergerBBS
-	consulAdapter               *consuladapter.Adapter
+	consulSession               *consuladapter.Session
 	logger                      lager.Logger
 	clock                       clock.Clock
 	convergeRepeatInterval      time.Duration
@@ -29,7 +29,7 @@ type ConvergerProcess struct {
 
 func New(
 	bbs Bbs.ConvergerBBS,
-	consulAdapter *consuladapter.Adapter,
+	consulSession *consuladapter.Session,
 	logger lager.Logger,
 	clock clock.Clock,
 	convergeRepeatInterval,
@@ -46,7 +46,7 @@ func New(
 	return &ConvergerProcess{
 		id:            uuid.String(),
 		bbs:           bbs,
-		consulAdapter: consulAdapter,
+		consulSession: consulSession,
 		logger:        logger,
 		clock:         clock,
 		convergeRepeatInterval:      convergeRepeatInterval,
@@ -61,27 +61,31 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	convergeTimer := c.clock.NewTimer(c.convergeRepeatInterval)
 	defer convergeTimer.Stop()
 
-	cellDisappeared := make(chan services_bbs.CellEvent, 1)
+	cellDisappeared := make(chan services_bbs.CellEvent)
 
 	logger := c.logger.WithData(lager.Data{
 		"expire-pending-task-duration": c.expirePendingTaskDuration.String(),
 		"kick-pending-task-duration":   c.kickPendingTaskDuration.String(),
 	})
 
+	done := make(chan struct{})
 	go func() {
+		events := c.bbs.CellEvents()
 		for {
-			event, err := c.bbs.WaitForCellEvent()
-			if err != nil {
-				c.logger.Error("failed-to-wait-for-cell-event", err)
-			} else {
+			select {
+			case event := <-events:
 				switch event.EventType() {
 				case services_bbs.CellDisappeared:
 					c.logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
 					select {
 					case cellDisappeared <- event:
-					default:
+					case <-done:
+						return
 					}
 				}
+
+			case <-done:
+				return
 			}
 		}
 	}()
@@ -91,6 +95,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	for {
 		select {
 		case <-signals:
+			close(done)
 			return nil
 
 		case event := <-cellDisappeared:

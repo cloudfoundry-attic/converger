@@ -100,28 +100,29 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	consulScheme, consulAddresses, err := consuladapter.Parse(*consulCluster)
+	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {
-		logger.Fatal("failed-parsing-consul-cluster", err)
+		logger.Fatal("new-client-failed", err)
 	}
 
-	consulAdapter, err := consuladapter.NewAdapter(consulAddresses, consulScheme)
+	sessionMgr := consuladapter.NewSessionManager(client)
+	consulSession, err := consuladapter.NewSession("converger", *lockTTL, client, sessionMgr)
 	if err != nil {
-		logger.Fatal("failed-building-consul-adapter", err)
+		logger.Fatal("consul-session-failed", err)
 	}
 
-	bbs := initializeBBS(logger, consulAdapter)
+	bbs := initializeBBS(logger, consulSession)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	heartbeater := bbs.NewConvergeLock(uuid.String(), *lockTTL, *heartbeatRetryInterval)
+	heartbeater := bbs.NewConvergeLock(uuid.String(), *heartbeatRetryInterval)
 
 	converger := converger_process.New(
 		bbs,
-		consulAdapter,
+		consulSession,
 		logger,
 		clock.NewClock(),
 		*convergeRepeatInterval,
@@ -156,7 +157,7 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeBBS(logger lager.Logger, adapter *consuladapter.Adapter) Bbs.ConvergerBBS {
+func initializeBBS(logger lager.Logger, session *consuladapter.Session) Bbs.ConvergerBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workpool.NewWorkPool(10),
@@ -167,7 +168,7 @@ func initializeBBS(logger lager.Logger, adapter *consuladapter.Adapter) Bbs.Conv
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewConvergerBBS(etcdAdapter, adapter, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return Bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
-	"github.com/hashicorp/consul/consul/structs"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -35,7 +34,7 @@ var _ = Describe("Converger", func() {
 		runner     *converger_runner.ConvergerRunner
 
 		consulRunner  *consuladapter.ClusterRunner
-		consulAdapter *consuladapter.Adapter
+		consulSession *consuladapter.Session
 
 		convergeRepeatInterval      time.Duration
 		taskKickInterval            time.Duration
@@ -77,9 +76,10 @@ var _ = Describe("Converger", func() {
 	BeforeEach(func() {
 		etcdRunner.Start()
 		consulRunner.Start()
+		consulRunner.WaitUntilReady()
 
-		consulAdapter = consulRunner.NewAdapter()
-		bbs = Bbs.NewBBS(etcdClient, consulAdapter, "http://receptor.bogus.com", clock.NewClock(), logger)
+		consulSession = consulRunner.NewSession("a-session")
+		bbs = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), logger)
 
 		capacity := models.NewCellCapacity(512, 1024, 124)
 		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity)
@@ -87,12 +87,7 @@ var _ = Describe("Converger", func() {
 		value, err := models.ToJSON(cellPresence)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		consulRunner.WaitUntilReady()
-		_, err = consulAdapter.AcquireAndMaintainLock(
-			shared.CellSchemaPath(cellPresence.CellID),
-			value,
-			structs.SessionTTLMin,
-			nil)
+		_, err = consulSession.SetPresence(shared.CellSchemaPath(cellPresence.CellID), value)
 		Ω(err).ShouldNot(HaveOccurred())
 
 		convergeRepeatInterval = 500 * time.Millisecond
@@ -163,7 +158,7 @@ var _ = Describe("Converger", func() {
 	Context("when the converger loses the lock", func() {
 		BeforeEach(func() {
 			startConverger()
-			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("succeeded-acquiring-lock"))
+			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("acquire-lock-succeeded"))
 
 			consulRunner.Reset()
 		})
@@ -174,13 +169,11 @@ var _ = Describe("Converger", func() {
 	})
 
 	Context("when the converger initially does not have the lock", func() {
+		var otherSession *consuladapter.Session
 
 		BeforeEach(func() {
-			_, err := consulAdapter.AcquireAndMaintainLock(
-				shared.LockSchemaPath("converge_lock"),
-				[]byte("something-else"),
-				structs.SessionTTLMin,
-				nil)
+			otherSession = consulRunner.NewSession("other-session")
+			err := otherSession.AcquireLock(shared.LockSchemaPath("converge_lock"), []byte("something-else"))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			startConverger()
@@ -190,8 +183,7 @@ var _ = Describe("Converger", func() {
 
 		Describe("when the lock becomes available", func() {
 			BeforeEach(func() {
-				err := consulAdapter.ReleaseAndDeleteLock(shared.LockSchemaPath("converge_lock"))
-				Ω(err).ShouldNot(HaveOccurred())
+				otherSession.Destroy()
 				time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
 			})
 
