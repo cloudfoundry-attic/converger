@@ -17,7 +17,7 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/converger/converger_runner"
+	"github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -31,7 +31,7 @@ var _ = Describe("Converger", func() {
 	var (
 		etcdRunner *etcdstorerunner.ETCDClusterRunner
 		bbs        *Bbs.BBS
-		runner     *converger_runner.ConvergerRunner
+		runner     *testrunner.ConvergerRunner
 
 		consulRunner  *consuladapter.ClusterRunner
 		consulSession *consuladapter.Session
@@ -64,7 +64,7 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		runner = converger_runner.New(string(convergerBinPath), etcdCluster, consulRunner.ConsulCluster(), "info")
+		runner = testrunner.New(string(convergerBinPath), etcdCluster, consulRunner.ConsulCluster(), "info")
 	})
 
 	SynchronizedAfterSuite(func() {

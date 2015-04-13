@@ -1,4 +1,4 @@
-package converger_runner
+package testrunner
 
 import (
 	"os/exec"
