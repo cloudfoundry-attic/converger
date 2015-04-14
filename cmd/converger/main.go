@@ -48,8 +48,8 @@ var lockTTL = flag.Duration(
 	"TTL for service lock",
 )
 
-var heartbeatRetryInterval = flag.Duration(
-	"heartbeatRetryInterval",
+var lockRetryInterval = flag.Duration(
+	"lockRetryInterval",
 	lock_bbs.RetryInterval,
 	"interval to wait before retrying a failed lock acquisition",
 )
@@ -118,7 +118,7 @@ func main() {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	heartbeater := bbs.NewConvergeLock(uuid.String(), *heartbeatRetryInterval)
+	lockMaintainer := bbs.NewConvergeLock(uuid.String(), *lockRetryInterval)
 
 	converger := converger_process.New(
 		bbs,
@@ -132,7 +132,7 @@ func main() {
 	)
 
 	members := grouper.Members{
-		{"heartbeater", heartbeater},
+		{"lock-maintainer", lockMaintainer},
 		{"converger", converger},
 	}
 
