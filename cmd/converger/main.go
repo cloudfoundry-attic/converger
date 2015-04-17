@@ -163,11 +163,6 @@ func initializeBBS(logger lager.Logger, session *consuladapter.Session) Bbs.Conv
 		workpool.NewWorkPool(10),
 	)
 
-	err := etcdAdapter.Connect()
-	if err != nil {
-		logger.Fatal("failed-to-connect-to-etcd", err)
-	}
-
 	return Bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -46,7 +46,7 @@ var _ = Describe("Converger", func() {
 	)
 
 	SynchronizedBeforeSuite(func() []byte {
-		convergerBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
+		convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
 		Ω(err).ShouldNot(HaveOccurred())
 		return []byte(convergerBinPath)
 	}, func(convergerBinPath []byte) {
@@ -70,7 +70,7 @@ var _ = Describe("Converger", func() {
 	SynchronizedAfterSuite(func() {
 		etcdRunner.Stop()
 	}, func() {
-		gexec.CleanupBuildArtifacts()
+		CleanupBuildArtifacts()
 	})
 
 	BeforeEach(func() {
@@ -164,7 +164,7 @@ var _ = Describe("Converger", func() {
 		})
 
 		It("exits with an error", func() {
-			Eventually(runner.Session, exitDuration).Should(gexec.Exit(1))
+			Eventually(runner.Session, exitDuration).Should(Exit(1))
 		})
 	})
 
@@ -207,15 +207,30 @@ var _ = Describe("Converger", func() {
 		Describe("when it receives SIGINT", func() {
 			It("exits successfully", func() {
 				runner.Session.Command.Process.Signal(syscall.SIGINT)
-				Eventually(runner.Session, exitDuration).Should(gexec.Exit(0))
+				Eventually(runner.Session, exitDuration).Should(Exit(0))
 			})
 		})
 
 		Describe("when it receives SIGTERM", func() {
 			It("exits successfully", func() {
 				runner.Session.Command.Process.Signal(syscall.SIGTERM)
-				Eventually(runner.Session, exitDuration).Should(gexec.Exit(0))
+				Eventually(runner.Session, exitDuration).Should(Exit(0))
 			})
+		})
+	})
+
+	Context("when etcd is down", func() {
+		BeforeEach(func() {
+			etcdRunner.Stop()
+			startConverger()
+		})
+
+		AfterEach(func() {
+			etcdRunner.Start()
+		})
+
+		It("starts", func() {
+			Consistently(runner.Session).ShouldNot(Exit())
 		})
 	})
 })
