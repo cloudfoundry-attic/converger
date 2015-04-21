@@ -68,7 +68,6 @@ var _ = Describe("Converger", func() {
 	})
 
 	SynchronizedAfterSuite(func() {
-		etcdRunner.Stop()
 	}, func() {
 		CleanupBuildArtifacts()
 	})
@@ -223,10 +222,6 @@ var _ = Describe("Converger", func() {
 		BeforeEach(func() {
 			etcdRunner.Stop()
 			startConverger()
-		})
-
-		AfterEach(func() {
-			etcdRunner.Start()
 		})
 
 		It("starts", func() {
