@@ -132,7 +132,7 @@ var _ = Describe("Converger", func() {
 			It("does not converge the task", func() {
 				Consistently(func() ([]models.Task, error) {
 					return bbs.CompletedTasks(logger)
-				}, 5*convergeRepeatInterval).Should(BeEmpty())
+				}, 10*convergeRepeatInterval).Should(BeEmpty())
 			})
 		})
 	}
@@ -150,7 +150,7 @@ var _ = Describe("Converger", func() {
 
 				Eventually(func() ([]models.Task, error) {
 					return bbs.CompletedTasks(logger)
-				}, 5*convergeRepeatInterval).Should(HaveLen(1))
+				}, 10*convergeRepeatInterval).Should(HaveLen(1))
 			})
 		})
 	})
@@ -192,8 +192,8 @@ var _ = Describe("Converger", func() {
 
 				It("eventually marks the task as failed", func() {
 					Eventually(func() ([]models.Task, error) {
-						return bbs.CompletedTasks(logger)
-					}, 5*convergeRepeatInterval).Should(HaveLen(1))
+						return bbs.FailedTasks(logger)
+					}, 10*convergeRepeatInterval).Should(HaveLen(1))
 				})
 			})
 		})
