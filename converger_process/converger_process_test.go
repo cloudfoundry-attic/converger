@@ -83,9 +83,9 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			_, timeToClaim, convergenceInterval, timeToResolve, _ := fakeBBS.ConvergeTasksArgsForCall(0)
-			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
-			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
-			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
+			Expect(timeToClaim).To(Equal(expirePendingTaskDuration))
+			Expect(convergenceInterval).To(Equal(kickPendingTaskDuration))
+			Expect(timeToResolve).To(Equal(expireCompletedTaskDuration))
 
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 
@@ -93,9 +93,9 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 
 			_, timeToClaim, convergenceInterval, timeToResolve, _ = fakeBBS.ConvergeTasksArgsForCall(1)
-			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
-			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
-			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
+			Expect(timeToClaim).To(Equal(expirePendingTaskDuration))
+			Expect(convergenceInterval).To(Equal(kickPendingTaskDuration))
+			Expect(timeToResolve).To(Equal(expireCompletedTaskDuration))
 		})
 	})
 
@@ -112,9 +112,9 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			_, timeToClaim, convergenceInterval, timeToResolve, _ := fakeBBS.ConvergeTasksArgsForCall(0)
-			Ω(timeToClaim).Should(Equal(expirePendingTaskDuration))
-			Ω(convergenceInterval).Should(Equal(kickPendingTaskDuration))
-			Ω(timeToResolve).Should(Equal(expireCompletedTaskDuration))
+			Expect(timeToClaim).To(Equal(expirePendingTaskDuration))
+			Expect(convergenceInterval).To(Equal(kickPendingTaskDuration))
+			Expect(timeToResolve).To(Equal(expireCompletedTaskDuration))
 
 			waitErrs <- errors.New("whoopsie")
 

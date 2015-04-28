@@ -54,7 +54,7 @@ func (r *ConvergerRunner) Start(convergeRepeatInterval, kickPendingTaskDuration,
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	r.Session = convergerSession
 	Eventually(r.Session, 5*time.Second).Should(gbytes.Say("acquiring-lock"))
 }

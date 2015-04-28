@@ -47,7 +47,7 @@ var _ = Describe("Converger", func() {
 
 	SynchronizedBeforeSuite(func() []byte {
 		convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		return []byte(convergerBinPath)
 	}, func(convergerBinPath []byte) {
 		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
@@ -84,10 +84,10 @@ var _ = Describe("Converger", func() {
 		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity)
 
 		value, err := models.ToJSON(cellPresence)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		_, err = consulSession.SetPresence(shared.CellSchemaPath(cellPresence.CellID), value)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		convergeRepeatInterval = 500 * time.Millisecond
 		taskKickInterval = convergeRepeatInterval
@@ -118,10 +118,10 @@ var _ = Describe("Converger", func() {
 		}
 
 		err := bbs.DesireTask(logger, task)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		_, err = bbs.StartTask(logger, task.TaskGuid, "dead-cell")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 	}
 
 	itIsInactive := func() {
@@ -173,7 +173,7 @@ var _ = Describe("Converger", func() {
 		BeforeEach(func() {
 			otherSession = consulRunner.NewSession("other-session")
 			err := otherSession.AcquireLock(shared.LockSchemaPath("converge_lock"), []byte("something-else"))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			startConverger()
 		})
