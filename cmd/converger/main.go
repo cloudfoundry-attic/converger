@@ -11,7 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/workpool"
@@ -111,17 +111,17 @@ func main() {
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	bbs := initializeBBS(logger, consulSession)
+	convergerBBS := initializeConvergerBBS(logger, consulSession)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	lockMaintainer := bbs.NewConvergeLock(uuid.String(), *lockRetryInterval)
+	lockMaintainer := convergerBBS.NewConvergeLock(uuid.String(), *lockRetryInterval)
 
 	converger := converger_process.New(
-		bbs,
+		convergerBBS,
 		consulSession,
 		logger,
 		clock.NewClock(),
@@ -157,13 +157,13 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeBBS(logger lager.Logger, session *consuladapter.Session) Bbs.ConvergerBBS {
+func initializeConvergerBBS(logger lager.Logger, session *consuladapter.Session) bbs.ConvergerBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
-		workpool.NewWorkPool(10),
+		workpool.NewWorkPool(bbs.ConvergerBBSWorkPoolSize),
 	)
 
-	return Bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {
