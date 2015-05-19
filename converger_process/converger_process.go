@@ -116,7 +116,13 @@ func (c *ConvergerProcess) converge(tickLog lager.Logger) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.bbs.ConvergeTasks(tickLog, c.expirePendingTaskDuration, c.kickPendingTaskDuration, c.expireCompletedTaskDuration, cellsLoader)
+		c.bbs.ConvergeTasks(
+			tickLog,
+			c.expirePendingTaskDuration,
+			c.kickPendingTaskDuration,
+			c.expireCompletedTaskDuration,
+			cellsLoader,
+		)
 	}()
 
 	wg.Add(1)
