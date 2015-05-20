@@ -25,7 +25,7 @@ var _ = Describe("ConvergerProcess", func() {
 		logger                      *lagertest.TestLogger
 		fakeClock                   *fakeclock.FakeClock
 		convergeRepeatInterval      time.Duration
-		kickPendingTaskDuration     time.Duration
+		kickTaskDuration            time.Duration
 		expirePendingTaskDuration   time.Duration
 		expireCompletedTaskDuration time.Duration
 
@@ -42,7 +42,7 @@ var _ = Describe("ConvergerProcess", func() {
 
 		convergeRepeatInterval = 1 * time.Second
 
-		kickPendingTaskDuration = 10 * time.Millisecond
+		kickTaskDuration = 10 * time.Millisecond
 		expirePendingTaskDuration = 30 * time.Second
 		expireCompletedTaskDuration = 60 * time.Minute
 
@@ -63,7 +63,7 @@ var _ = Describe("ConvergerProcess", func() {
 				logger,
 				fakeClock,
 				convergeRepeatInterval,
-				kickPendingTaskDuration,
+				kickTaskDuration,
 				expirePendingTaskDuration,
 				expireCompletedTaskDuration,
 			),
@@ -82,20 +82,20 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			_, timeToClaim, convergenceInterval, timeToResolve, _ := fakeBBS.ConvergeTasksArgsForCall(0)
-			Expect(timeToClaim).To(Equal(expirePendingTaskDuration))
-			Expect(convergenceInterval).To(Equal(kickPendingTaskDuration))
-			Expect(timeToResolve).To(Equal(expireCompletedTaskDuration))
+			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration, _ := fakeBBS.ConvergeTasksArgsForCall(0)
+			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
+			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
+			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
 
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 
-			_, timeToClaim, convergenceInterval, timeToResolve, _ = fakeBBS.ConvergeTasksArgsForCall(1)
-			Expect(timeToClaim).To(Equal(expirePendingTaskDuration))
-			Expect(convergenceInterval).To(Equal(kickPendingTaskDuration))
-			Expect(timeToResolve).To(Equal(expireCompletedTaskDuration))
+			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration, _ = fakeBBS.ConvergeTasksArgsForCall(1)
+			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
+			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
+			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
 		})
 	})
 
@@ -111,10 +111,10 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			_, timeToClaim, convergenceInterval, timeToResolve, _ := fakeBBS.ConvergeTasksArgsForCall(0)
-			Expect(timeToClaim).To(Equal(expirePendingTaskDuration))
-			Expect(convergenceInterval).To(Equal(kickPendingTaskDuration))
-			Expect(timeToResolve).To(Equal(expireCompletedTaskDuration))
+			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration, _ := fakeBBS.ConvergeTasksArgsForCall(0)
+			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
+			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
+			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
 
 			waitErrs <- errors.New("whoopsie")
 

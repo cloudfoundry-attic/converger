@@ -21,7 +21,7 @@ type ConvergerProcess struct {
 	logger                      lager.Logger
 	clock                       clock.Clock
 	convergeRepeatInterval      time.Duration
-	kickPendingTaskDuration     time.Duration
+	kickTaskDuration            time.Duration
 	expirePendingTaskDuration   time.Duration
 	expireCompletedTaskDuration time.Duration
 	closeOnce                   *sync.Once
@@ -33,7 +33,7 @@ func New(
 	logger lager.Logger,
 	clock clock.Clock,
 	convergeRepeatInterval,
-	kickPendingTaskDuration,
+	kickTaskDuration,
 	expirePendingTaskDuration,
 	expireCompletedTaskDuration time.Duration,
 ) *ConvergerProcess {
@@ -50,7 +50,7 @@ func New(
 		logger:        logger,
 		clock:         clock,
 		convergeRepeatInterval:      convergeRepeatInterval,
-		kickPendingTaskDuration:     kickPendingTaskDuration,
+		kickTaskDuration:            kickTaskDuration,
 		expirePendingTaskDuration:   expirePendingTaskDuration,
 		expireCompletedTaskDuration: expireCompletedTaskDuration,
 		closeOnce:                   &sync.Once{},
@@ -64,8 +64,9 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	cellDisappeared := make(chan services_bbs.CellEvent)
 
 	logger := c.logger.WithData(lager.Data{
-		"expire-pending-task-duration": c.expirePendingTaskDuration.String(),
-		"kick-pending-task-duration":   c.kickPendingTaskDuration.String(),
+		"kick-task-duration":             c.kickTaskDuration.String(),
+		"expire-pending-task-duration":   c.expirePendingTaskDuration.String(),
+		"expire-completed-task-duration": c.expireCompletedTaskDuration.String(),
 	})
 
 	done := make(chan struct{})
@@ -118,8 +119,8 @@ func (c *ConvergerProcess) converge(tickLog lager.Logger) {
 		defer wg.Done()
 		c.bbs.ConvergeTasks(
 			tickLog,
+			c.kickTaskDuration,
 			c.expirePendingTaskDuration,
-			c.kickPendingTaskDuration,
 			c.expireCompletedTaskDuration,
 			cellsLoader,
 		)

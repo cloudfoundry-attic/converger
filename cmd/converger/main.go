@@ -60,10 +60,10 @@ var convergeRepeatInterval = flag.Duration(
 	"the interval between runs of the converge process",
 )
 
-var kickPendingTaskDuration = flag.Duration(
-	"kickPendingTaskDuration",
+var kickTaskDuration = flag.Duration(
+	"kickTaskDuration",
 	30*time.Second,
-	"the interval, in seconds, between kicks to pending tasks",
+	"the interval, in seconds, between kicks to tasks",
 )
 
 var expireCompletedTaskDuration = flag.Duration(
@@ -126,7 +126,7 @@ func main() {
 		logger,
 		clock.NewClock(),
 		*convergeRepeatInterval,
-		*kickPendingTaskDuration,
+		*kickTaskDuration,
 		*expirePendingTaskDuration,
 		*expireCompletedTaskDuration,
 	)
