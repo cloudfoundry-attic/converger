@@ -158,9 +158,14 @@ func main() {
 }
 
 func initializeConvergerBBS(logger lager.Logger, session *consuladapter.Session) bbs.ConvergerBBS {
+	workPool, err := workpool.NewWorkPool(bbs.ConvergerBBSWorkPoolSize)
+	if err != nil {
+		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": bbs.ConvergerBBSWorkPoolSize}) // should never happen
+	}
+
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
-		workpool.NewWorkPool(bbs.ConvergerBBSWorkPoolSize),
+		workPool,
 	)
 
 	return bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
