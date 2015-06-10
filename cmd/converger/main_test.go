@@ -23,6 +23,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
+const assetsPath = "../../../../cloudfoundry/storeadapter/assets/"
+
 var _ = Describe("Converger", func() {
 	const (
 		exitDuration = 4 * time.Second
@@ -51,10 +53,20 @@ var _ = Describe("Converger", func() {
 		return []byte(convergerBinPath)
 	}, func(convergerBinPath []byte) {
 		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
-		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
-		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
+		etcdCluster := fmt.Sprintf("https://127.0.0.1:%d", etcdPort)
+		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1,
+			&etcdstorerunner.SSLConfig{
+				CertFile: assetsPath + "server.crt",
+				KeyFile:  assetsPath + "server.key",
+				CAFile:   assetsPath + "ca.crt",
+			})
 
-		etcdClient = etcdRunner.Adapter()
+		etcdClient = etcdRunner.Adapter(
+			&etcdstorerunner.SSLConfig{
+				CertFile: assetsPath + "client.crt",
+				KeyFile:  assetsPath + "client.key",
+				CAFile:   assetsPath + "ca.crt",
+			})
 
 		consulRunner = consuladapter.NewClusterRunner(
 			9001+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength,
@@ -64,7 +76,16 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		runner = testrunner.New(string(convergerBinPath), etcdCluster, consulRunner.ConsulCluster(), "info")
+		runner = testrunner.New(
+			string(convergerBinPath),
+			testrunner.Config{
+				EtcdCluster:   etcdCluster,
+				ConsulCluster: consulRunner.ConsulCluster(),
+				LogLevel:      "info",
+				CertFile:      assetsPath + "client.crt",
+				KeyFile:       assetsPath + "client.key",
+				CaFile:        assetsPath + "ca.crt",
+			})
 	})
 
 	SynchronizedAfterSuite(func() {

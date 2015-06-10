@@ -17,19 +17,18 @@ type ConvergerRunner struct {
 }
 
 type Config struct {
-	etcdCluster   string
-	consulCluster string
-	logLevel      string
+	EtcdCluster   string
+	ConsulCluster string
+	LogLevel      string
+	CertFile      string
+	KeyFile       string
+	CaFile        string
 }
 
-func New(binPath, etcdCluster string, consulCluster string, logLevel string) *ConvergerRunner {
+func New(binPath string, config Config) *ConvergerRunner {
 	return &ConvergerRunner{
 		binPath: binPath,
-		config: Config{
-			etcdCluster:   etcdCluster,
-			consulCluster: consulCluster,
-			logLevel:      logLevel,
-		},
+		config:  config,
 	}
 }
 
@@ -41,14 +40,17 @@ func (r *ConvergerRunner) Start(convergeRepeatInterval, kickTaskDuration, expire
 	convergerSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
-			"-etcdCluster", r.config.etcdCluster,
-			"-logLevel", r.config.logLevel,
+			"-etcdCluster", r.config.EtcdCluster,
+			"-logLevel", r.config.LogLevel,
 			"-convergeRepeatInterval", convergeRepeatInterval.String(),
 			"-kickTaskDuration", kickTaskDuration.String(),
 			"-expirePendingTaskDuration", expirePendingTaskDuration.String(),
 			"-expireCompletedTaskDuration", expireCompletedTaskDuration.String(),
 			"-lockRetryInterval", "1s",
-			"-consulCluster", r.config.consulCluster,
+			"-consulCluster", r.config.ConsulCluster,
+			"-certFile", r.config.CertFile,
+			"-keyFile", r.config.KeyFile,
+			"-caFile", r.config.CaFile,
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
