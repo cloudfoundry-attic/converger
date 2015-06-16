@@ -52,9 +52,9 @@ var _ = Describe("Converger", func() {
 	}, func(convergerBinPath []byte) {
 		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
 		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
-		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
+		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
 
-		etcdClient = etcdRunner.Adapter()
+		etcdClient = etcdRunner.Adapter(nil)
 
 		consulRunner = consuladapter.NewClusterRunner(
 			9001+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength,
@@ -64,7 +64,13 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		runner = testrunner.New(string(convergerBinPath), etcdCluster, consulRunner.ConsulCluster(), "info")
+		runner = testrunner.New(
+			string(convergerBinPath),
+			testrunner.Config{
+				EtcdCluster:   etcdCluster,
+				ConsulCluster: consulRunner.ConsulCluster(),
+				LogLevel:      "info",
+			})
 	})
 
 	SynchronizedAfterSuite(func() {

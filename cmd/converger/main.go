@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
@@ -28,12 +27,6 @@ var receptorTaskHandlerURL = flag.String(
 	"receptorTaskHandlerURL",
 	"http://127.0.0.1:1169",
 	"location of receptor task handler",
-)
-
-var etcdCluster = flag.String(
-	"etcdCluster",
-	"http://127.0.0.1:4001",
-	"comma-separated list of etcd URLs (scheme://ip:port)",
 )
 
 var consulCluster = flag.String(
@@ -92,11 +85,17 @@ const (
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
+	etcdFlags := etcdstoreadapter.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	cf_http.Initialize(*communicationTimeout)
 
 	logger, reconfigurableSink := cf_lager.New("converger")
+
+	etcdOptions, err := etcdFlags.Validate()
+	if err != nil {
+		logger.Fatal("etcd-validation-failed", err)
+	}
 
 	initializeDropsonde(logger)
 
@@ -111,7 +110,7 @@ func main() {
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	convergerBBS := initializeConvergerBBS(logger, consulSession)
+	convergerBBS := initializeConvergerBBS(etcdOptions, logger, consulSession)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
@@ -157,16 +156,17 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeConvergerBBS(logger lager.Logger, session *consuladapter.Session) bbs.ConvergerBBS {
+func initializeConvergerBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger, session *consuladapter.Session) bbs.ConvergerBBS {
 	workPool, err := workpool.NewWorkPool(bbs.ConvergerBBSWorkPoolSize)
 	if err != nil {
 		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": bbs.ConvergerBBSWorkPoolSize}) // should never happen
 	}
 
-	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
-		strings.Split(*etcdCluster, ","),
-		workPool,
-	)
+	etcdAdapter, err := etcdstoreadapter.New(etcdOptions, workPool)
+
+	if err != nil {
+		logger.Fatal("failed-to-construct-etcd-tls-client", err)
+	}
 
 	return bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
