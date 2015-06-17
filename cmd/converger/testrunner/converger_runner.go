@@ -20,9 +20,9 @@ type Config struct {
 	EtcdCluster   string
 	ConsulCluster string
 	LogLevel      string
-	CertFile      string
-	KeyFile       string
-	CaFile        string
+	EtcdCertFile  string
+	EtcdKeyFile   string
+	EtcdCaFile    string
 }
 
 func New(binPath string, config Config) *ConvergerRunner {
@@ -48,9 +48,9 @@ func (r *ConvergerRunner) Start(convergeRepeatInterval, kickTaskDuration, expire
 			"-expireCompletedTaskDuration", expireCompletedTaskDuration.String(),
 			"-lockRetryInterval", "1s",
 			"-consulCluster", r.config.ConsulCluster,
-			"-certFile", r.config.CertFile,
-			"-keyFile", r.config.KeyFile,
-			"-caFile", r.config.CaFile,
+			"-etcdCertFile", r.config.EtcdCertFile,
+			"-etcdKeyFile", r.config.EtcdKeyFile,
+			"-etcdCaFile", r.config.EtcdCaFile,
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
