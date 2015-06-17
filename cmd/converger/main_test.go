@@ -17,6 +17,7 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
@@ -33,7 +34,7 @@ var _ = Describe("Converger", func() {
 		bbs        *Bbs.BBS
 		runner     *testrunner.ConvergerRunner
 
-		consulRunner  *consuladapter.ClusterRunner
+		consulRunner  *consulrunner.ClusterRunner
 		consulSession *consuladapter.Session
 
 		convergeRepeatInterval      time.Duration
@@ -56,8 +57,8 @@ var _ = Describe("Converger", func() {
 
 		etcdClient = etcdRunner.Adapter(nil)
 
-		consulRunner = consuladapter.NewClusterRunner(
-			9001+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength,
+		consulRunner = consulrunner.NewClusterRunner(
+			9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
 			1,
 			"http",
 		)
