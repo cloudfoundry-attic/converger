@@ -119,6 +119,7 @@ var _ = Describe("Converger", func() {
 			TaskGuid: "task-guid",
 			RootFS:   "some:rootfs",
 			Action: &models.RunAction{
+				User: "me",
 				Path: "cat",
 				Args: []string{"/tmp/file"},
 			},
