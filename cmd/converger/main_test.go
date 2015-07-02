@@ -88,7 +88,7 @@ var _ = Describe("Converger", func() {
 		bbs = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), logger)
 
 		capacity := models.NewCellCapacity(512, 1024, 124)
-		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity)
+		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
 
 		value, err := models.ToJSON(cellPresence)
 		Expect(err).NotTo(HaveOccurred())
