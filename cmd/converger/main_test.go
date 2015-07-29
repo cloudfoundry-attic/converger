@@ -37,24 +37,26 @@ type BinPaths struct {
 
 var _ = Describe("Converger", func() {
 	const (
-		exitDuration = 4 * time.Second
+		exitDuration                = 4 * time.Second
+		convergeRepeatInterval      = 500 * time.Millisecond
+		taskKickInterval            = convergeRepeatInterval
+		expireCompletedTaskDuration = 3 * convergeRepeatInterval
+		expirePendingTaskDuration   = 30 * time.Minute
 	)
 
 	var (
-		binPaths   BinPaths
-		etcdRunner *etcdstorerunner.ETCDClusterRunner
-		bbsArgs    bbsrunner.Args
-		bbsProcess ifrit.Process
-		bbsClient  bbs.Client
-		legacyBBS  *Bbs.BBS
-		runner     *convergerrunner.ConvergerRunner
+		binPaths         BinPaths
+		etcdRunner       *etcdstorerunner.ETCDClusterRunner
+		bbsArgs          bbsrunner.Args
+		bbsProcess       ifrit.Process
+		bbsClient        bbs.Client
+		legacyBBS        *Bbs.BBS
+		convergerConfig  *convergerrunner.Config
+		convergerProcess ifrit.Process
+		runner           *ginkgomon.Runner
 
 		consulRunner  *consulrunner.ClusterRunner
 		consulSession *consuladapter.Session
-
-		convergeRepeatInterval      time.Duration
-		taskKickInterval            time.Duration
-		expireCompletedTaskDuration time.Duration
 
 		etcdClient storeadapter.StoreAdapter
 
@@ -91,13 +93,16 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		runner = convergerrunner.New(
-			string(binPaths.Converger),
-			convergerrunner.Config{
-				EtcdCluster:   etcdCluster,
-				ConsulCluster: consulRunner.ConsulCluster(),
-				LogLevel:      "info",
-			})
+		convergerConfig = &convergerrunner.Config{
+			BinPath:                     binPaths.Converger,
+			ConvergeRepeatInterval:      convergeRepeatInterval.String(),
+			KickTaskDuration:            taskKickInterval.String(),
+			ExpirePendingTaskDuration:   expirePendingTaskDuration.String(),
+			ExpireCompletedTaskDuration: expireCompletedTaskDuration.String(),
+			EtcdCluster:                 etcdCluster,
+			ConsulCluster:               consulRunner.ConsulCluster(),
+			LogLevel:                    "info",
+		}
 
 		bbsArgs = bbsrunner.Args{
 			Address:     fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
@@ -130,20 +135,18 @@ var _ = Describe("Converger", func() {
 		_, err = consulSession.SetPresence(shared.CellSchemaPath(cellPresence.CellID), value)
 		Expect(err).NotTo(HaveOccurred())
 
-		convergeRepeatInterval = 500 * time.Millisecond
-		taskKickInterval = convergeRepeatInterval
-		expireCompletedTaskDuration = 3 * convergeRepeatInterval
 	})
 
 	AfterEach(func() {
 		ginkgomon.Kill(bbsProcess)
-		runner.KillWithFire()
+		ginkgomon.Kill(convergerProcess)
 		consulRunner.Stop()
 		etcdRunner.Stop()
 	})
 
 	startConverger := func() {
-		runner.Start(convergeRepeatInterval, taskKickInterval, 30*time.Minute, expireCompletedTaskDuration)
+		runner = convergerrunner.New(convergerConfig)
+		convergerProcess = ginkgomon.Invoke(runner)
 		time.Sleep(convergeRepeatInterval)
 	}
 
@@ -200,13 +203,13 @@ var _ = Describe("Converger", func() {
 	Context("when the converger loses the lock", func() {
 		BeforeEach(func() {
 			startConverger()
-			Eventually(runner.Session, 5*time.Second).Should(gbytes.Say("acquire-lock-succeeded"))
+			Eventually(runner, 5*time.Second).Should(gbytes.Say("acquire-lock-succeeded"))
 
 			consulRunner.Reset()
 		})
 
 		It("exits with an error", func() {
-			Eventually(runner.Session, exitDuration).Should(Exit(1))
+			Eventually(runner, exitDuration).Should(Exit(1))
 		})
 	})
 
@@ -249,15 +252,15 @@ var _ = Describe("Converger", func() {
 
 		Describe("when it receives SIGINT", func() {
 			It("exits successfully", func() {
-				runner.Session.Command.Process.Signal(syscall.SIGINT)
-				Eventually(runner.Session, exitDuration).Should(Exit(0))
+				convergerProcess.Signal(syscall.SIGINT)
+				Eventually(runner, exitDuration).Should(Exit(0))
 			})
 		})
 
 		Describe("when it receives SIGTERM", func() {
 			It("exits successfully", func() {
-				runner.Session.Command.Process.Signal(syscall.SIGTERM)
-				Eventually(runner.Session, exitDuration).Should(Exit(0))
+				convergerProcess.Signal(syscall.SIGTERM)
+				Eventually(runner, exitDuration).Should(Exit(0))
 			})
 		})
 	})
@@ -269,7 +272,7 @@ var _ = Describe("Converger", func() {
 		})
 
 		It("starts", func() {
-			Consistently(runner.Session).ShouldNot(Exit())
+			Consistently(runner).ShouldNot(Exit())
 		})
 	})
 })
