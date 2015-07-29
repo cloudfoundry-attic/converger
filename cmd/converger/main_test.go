@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"syscall"
 	"time"
@@ -15,14 +16,24 @@ import (
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 
+	"github.com/cloudfoundry-incubator/bbs"
+	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
-	"github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
+	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 )
+
+type BinPaths struct {
+	Converger string
+	Bbs       string
+}
 
 var _ = Describe("Converger", func() {
 	const (
@@ -30,9 +41,13 @@ var _ = Describe("Converger", func() {
 	)
 
 	var (
+		binPaths   BinPaths
 		etcdRunner *etcdstorerunner.ETCDClusterRunner
-		bbs        *Bbs.BBS
-		runner     *testrunner.ConvergerRunner
+		bbsArgs    bbsrunner.Args
+		bbsProcess ifrit.Process
+		bbsClient  bbs.Client
+		legacyBBS  *Bbs.BBS
+		runner     *convergerrunner.ConvergerRunner
 
 		consulRunner  *consulrunner.ClusterRunner
 		consulSession *consuladapter.Session
@@ -49,8 +64,19 @@ var _ = Describe("Converger", func() {
 	SynchronizedBeforeSuite(func() []byte {
 		convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
 		Expect(err).NotTo(HaveOccurred())
-		return []byte(convergerBinPath)
-	}, func(convergerBinPath []byte) {
+		bbsBinPath, err := Build("github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
+		Expect(err).NotTo(HaveOccurred())
+		bytes, err := json.Marshal(BinPaths{
+			Converger: convergerBinPath,
+			Bbs:       bbsBinPath,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		return bytes
+	}, func(bytes []byte) {
+		binPaths = BinPaths{}
+		err := json.Unmarshal(bytes, &binPaths)
+		Expect(err).NotTo(HaveOccurred())
+
 		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
 		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
@@ -65,13 +91,18 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
-		runner = testrunner.New(
-			string(convergerBinPath),
-			testrunner.Config{
+		runner = convergerrunner.New(
+			string(binPaths.Converger),
+			convergerrunner.Config{
 				EtcdCluster:   etcdCluster,
 				ConsulCluster: consulRunner.ConsulCluster(),
 				LogLevel:      "info",
 			})
+
+		bbsArgs = bbsrunner.Args{
+			Address:     fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
+			EtcdCluster: etcdCluster,
+		}
 	})
 
 	SynchronizedAfterSuite(func() {
@@ -84,13 +115,16 @@ var _ = Describe("Converger", func() {
 		consulRunner.Start()
 		consulRunner.WaitUntilReady()
 
+		bbsProcess = ginkgomon.Invoke(bbsrunner.New(binPaths.Bbs, bbsArgs))
+		bbsClient = bbs.NewClient(fmt.Sprint("http://", bbsArgs.Address))
+
 		consulSession = consulRunner.NewSession("a-session")
-		bbs = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), logger)
+		legacyBBS = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), logger)
 
-		capacity := models.NewCellCapacity(512, 1024, 124)
-		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
+		capacity := oldmodels.NewCellCapacity(512, 1024, 124)
+		cellPresence := oldmodels.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
 
-		value, err := models.ToJSON(cellPresence)
+		value, err := oldmodels.ToJSON(cellPresence)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = consulSession.SetPresence(shared.CellSchemaPath(cellPresence.CellID), value)
@@ -102,6 +136,7 @@ var _ = Describe("Converger", func() {
 	})
 
 	AfterEach(func() {
+		ginkgomon.Kill(bbsProcess)
 		runner.KillWithFire()
 		consulRunner.Stop()
 		etcdRunner.Stop()
@@ -113,22 +148,22 @@ var _ = Describe("Converger", func() {
 	}
 
 	createRunningTaskWithDeadCell := func() {
-		task := models.Task{
+		task := oldmodels.Task{
 			Domain: "tests",
 
 			TaskGuid: "task-guid",
 			RootFS:   "some:rootfs",
-			Action: &models.RunAction{
+			Action: &oldmodels.RunAction{
 				User: "me",
 				Path: "cat",
 				Args: []string{"/tmp/file"},
 			},
 		}
 
-		err := bbs.DesireTask(logger, task)
+		err := legacyBBS.DesireTask(logger, task)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = bbs.StartTask(logger, task.TaskGuid, "dead-cell")
+		_, err = legacyBBS.StartTask(logger, task.TaskGuid, "dead-cell")
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -137,8 +172,8 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(createRunningTaskWithDeadCell)
 
 			It("does not converge the task", func() {
-				Consistently(func() ([]models.Task, error) {
-					return bbs.CompletedTasks(logger)
+				Consistently(func() []*models.Task {
+					return getTasksByState(bbsClient, models.Task_Completed)
 				}, 10*convergeRepeatInterval).Should(BeEmpty())
 			})
 		})
@@ -149,14 +184,14 @@ var _ = Describe("Converger", func() {
 			JustBeforeEach(createRunningTaskWithDeadCell)
 
 			It("marks the task as completed and failed", func() {
-				Consistently(func() ([]models.Task, error) {
-					return bbs.CompletedTasks(logger)
+				Consistently(func() []*models.Task {
+					return getTasksByState(bbsClient, models.Task_Completed)
 				}, 0.5).Should(BeEmpty())
 
 				startConverger()
 
-				Eventually(func() ([]models.Task, error) {
-					return bbs.CompletedTasks(logger)
+				Eventually(func() []*models.Task {
+					return getTasksByState(bbsClient, models.Task_Completed)
 				}, 10*convergeRepeatInterval).Should(HaveLen(1))
 			})
 		})
@@ -198,8 +233,9 @@ var _ = Describe("Converger", func() {
 				JustBeforeEach(createRunningTaskWithDeadCell)
 
 				It("eventually marks the task as failed", func() {
-					Eventually(func() ([]models.Task, error) {
-						return bbs.FailedTasks(logger)
+					Eventually(func() []*models.Task {
+						completedTasks := getTasksByState(bbsClient, models.Task_Completed)
+						return failedTasks(completedTasks)
 					}, 10*convergeRepeatInterval).Should(HaveLen(1))
 				})
 			})
@@ -237,3 +273,28 @@ var _ = Describe("Converger", func() {
 		})
 	})
 })
+
+func getTasksByState(client bbs.Client, state models.Task_State) []*models.Task {
+	tasks, err := client.Tasks()
+	Expect(err).NotTo(HaveOccurred())
+
+	filteredTasks := make([]*models.Task, 0)
+	for _, task := range tasks {
+		if task.State == state {
+			filteredTasks = append(filteredTasks, task)
+		}
+	}
+	return filteredTasks
+}
+
+func failedTasks(tasks []*models.Task) []*models.Task {
+	failedTasks := make([]*models.Task, 0)
+
+	for _, task := range tasks {
+		if task.Failed {
+			failedTasks = append(failedTasks, task)
+		}
+	}
+
+	return failedTasks
+}
