@@ -105,8 +105,9 @@ var _ = Describe("Converger", func() {
 		}
 
 		bbsArgs = bbsrunner.Args{
-			Address:     fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
-			EtcdCluster: etcdCluster,
+			Address:           fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
+			AuctioneerAddress: "some-address",
+			EtcdCluster:       etcdCluster,
 		}
 	})
 
