@@ -108,6 +108,7 @@ var _ = Describe("Converger", func() {
 			Address:           fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
 			AuctioneerAddress: "some-address",
 			EtcdCluster:       etcdCluster,
+			ConsulCluster:     consulRunner.ConsulCluster(),
 		}
 	})
 
