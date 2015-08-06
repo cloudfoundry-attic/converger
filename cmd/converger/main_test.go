@@ -22,6 +22,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs"
 	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/bbs/models/internal/model_helpers"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
@@ -153,22 +154,12 @@ var _ = Describe("Converger", func() {
 	}
 
 	createRunningTaskWithDeadCell := func() {
-		task := oldmodels.Task{
-			Domain: "tests",
+		task := model_helpers.NewValidTask("task-guid")
 
-			TaskGuid: "task-guid",
-			RootFS:   "some:rootfs",
-			Action: &oldmodels.RunAction{
-				User: "me",
-				Path: "cat",
-				Args: []string{"/tmp/file"},
-			},
-		}
-
-		err := legacyBBS.DesireTask(logger, task)
+		err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = legacyBBS.StartTask(logger, task.TaskGuid, "dead-cell")
+		_, err = bbsClient.StartTask(task.TaskGuid, "dead-cell")
 		Expect(err).NotTo(HaveOccurred())
 	}
 
