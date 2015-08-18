@@ -94,6 +94,13 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
+		bbsArgs = bbsrunner.Args{
+			Address:           fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
+			AuctioneerAddress: "some-address",
+			EtcdCluster:       etcdCluster,
+			ConsulCluster:     consulRunner.ConsulCluster(),
+		}
+
 		convergerConfig = &convergerrunner.Config{
 			BinPath:                     binPaths.Converger,
 			ConvergeRepeatInterval:      convergeRepeatInterval.String(),
@@ -103,14 +110,9 @@ var _ = Describe("Converger", func() {
 			EtcdCluster:                 etcdCluster,
 			ConsulCluster:               consulRunner.ConsulCluster(),
 			LogLevel:                    "info",
+			BBSAddress:                  bbsArgs.Address,
 		}
 
-		bbsArgs = bbsrunner.Args{
-			Address:           fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
-			AuctioneerAddress: "some-address",
-			EtcdCluster:       etcdCluster,
-			ConsulCluster:     consulRunner.ConsulCluster(),
-		}
 	})
 
 	SynchronizedAfterSuite(func() {

@@ -8,6 +8,7 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
@@ -16,7 +17,8 @@ import (
 
 type ConvergerProcess struct {
 	id                          string
-	bbs                         Bbs.ConvergerBBS
+	oldbbs                      Bbs.ConvergerBBS
+	bbsClient                   bbs.Client
 	consulSession               *consuladapter.Session
 	logger                      lager.Logger
 	clock                       clock.Clock
@@ -28,7 +30,8 @@ type ConvergerProcess struct {
 }
 
 func New(
-	bbs Bbs.ConvergerBBS,
+	oldBbs Bbs.ConvergerBBS,
+	bbsClient bbs.Client,
 	consulSession *consuladapter.Session,
 	logger lager.Logger,
 	clock clock.Clock,
@@ -45,7 +48,8 @@ func New(
 
 	return &ConvergerProcess{
 		id:            uuid.String(),
-		bbs:           bbs,
+		oldbbs:        oldBbs,
+		bbsClient:     bbsClient,
 		consulSession: consulSession,
 		logger:        logger,
 		clock:         clock,
@@ -71,7 +75,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 
 	done := make(chan struct{})
 	go func() {
-		events := c.bbs.CellEvents()
+		events := c.oldbbs.CellEvents()
 		for {
 			select {
 			case event := <-events:
@@ -111,25 +115,24 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 }
 
 func (c *ConvergerProcess) converge(tickLog lager.Logger) {
-	cellsLoader := c.bbs.NewCellsLoader()
+	cellsLoader := c.oldbbs.NewCellsLoader()
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.bbs.ConvergeTasks(
+		c.bbsClient.ConvergeTasks(
 			tickLog,
 			c.kickTaskDuration,
 			c.expirePendingTaskDuration,
 			c.expireCompletedTaskDuration,
-			cellsLoader,
 		)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.bbs.ConvergeLRPs(tickLog, cellsLoader)
+		c.oldbbs.ConvergeLRPs(tickLog, cellsLoader)
 	}()
 
 	wg.Wait()
