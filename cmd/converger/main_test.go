@@ -3,6 +3,7 @@ package main_test
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"syscall"
 	"time"
 
@@ -94,6 +95,20 @@ var _ = Describe("Converger", func() {
 
 		logger = lagertest.NewTestLogger("test")
 
+		bbsAddress := fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode())
+
+		bbsURL := &url.URL{
+			Scheme: "http",
+			Host:   bbsAddress,
+		}
+
+		bbsArgs = bbsrunner.Args{
+			Address:           bbsAddress,
+			AuctioneerAddress: "some-address",
+			EtcdCluster:       etcdCluster,
+			ConsulCluster:     consulRunner.ConsulCluster(),
+		}
+
 		convergerConfig = &convergerrunner.Config{
 			BinPath:                     binPaths.Converger,
 			ConvergeRepeatInterval:      convergeRepeatInterval.String(),
@@ -103,13 +118,7 @@ var _ = Describe("Converger", func() {
 			EtcdCluster:                 etcdCluster,
 			ConsulCluster:               consulRunner.ConsulCluster(),
 			LogLevel:                    "info",
-		}
-
-		bbsArgs = bbsrunner.Args{
-			Address:           fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode()),
-			AuctioneerAddress: "some-address",
-			EtcdCluster:       etcdCluster,
-			ConsulCluster:     consulRunner.ConsulCluster(),
+			BBSAddress:                  bbsURL.String(),
 		}
 	})
 

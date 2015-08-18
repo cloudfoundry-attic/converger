@@ -1,16 +1,18 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	oldBbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/workpool"
@@ -77,6 +79,12 @@ var communicationTimeout = flag.Duration(
 	"Timeout applied to all HTTP requests.",
 )
 
+var bbsAddress = flag.String(
+	"bbsAddress",
+	"",
+	"Address to the BBS Server",
+)
+
 const (
 	dropsondeOrigin      = "converger"
 	dropsondeDestination = "localhost:3457"
@@ -119,8 +127,15 @@ func main() {
 
 	lockMaintainer := convergerBBS.NewConvergeLock(uuid.String(), *lockRetryInterval)
 
+	if err := validateBBSAddress(); err != nil {
+		logger.Fatal("invalid-bbs-address", err)
+	}
+
+	bbsClient := bbs.NewClient(*bbsAddress)
+
 	converger := converger_process.New(
 		convergerBBS,
+		bbsClient,
 		consulSession,
 		logger,
 		clock.NewClock(),
@@ -156,10 +171,10 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeConvergerBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger, session *consuladapter.Session) bbs.ConvergerBBS {
-	workPool, err := workpool.NewWorkPool(bbs.ConvergerBBSWorkPoolSize)
+func initializeConvergerBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger, session *consuladapter.Session) oldBbs.ConvergerBBS {
+	workPool, err := workpool.NewWorkPool(oldBbs.ConvergerBBSWorkPoolSize)
 	if err != nil {
-		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": bbs.ConvergerBBSWorkPoolSize}) // should never happen
+		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": oldBbs.ConvergerBBSWorkPoolSize}) // should never happen
 	}
 
 	etcdAdapter, err := etcdstoreadapter.New(etcdOptions, workPool)
@@ -168,7 +183,7 @@ func initializeConvergerBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger la
 		logger.Fatal("failed-to-construct-etcd-tls-client", err)
 	}
 
-	return bbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return oldBbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {
@@ -176,4 +191,11 @@ func initializeDropsonde(logger lager.Logger) {
 	if err != nil {
 		logger.Error("failed to initialize dropsonde: %v", err)
 	}
+}
+
+func validateBBSAddress() error {
+	if *bbsAddress == "" {
+		return errors.New("bbsAddress is required")
+	}
+	return nil
 }

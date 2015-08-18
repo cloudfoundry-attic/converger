@@ -25,6 +25,7 @@ type Config struct {
 	EtcdCertFile                string
 	EtcdKeyFile                 string
 	EtcdCaFile                  string
+	BBSAddress                  string
 }
 
 func (c *Config) ArgSlice() []string {
@@ -40,6 +41,7 @@ func (c *Config) ArgSlice() []string {
 		"-etcdCertFile", c.EtcdCertFile,
 		"-etcdKeyFile", c.EtcdKeyFile,
 		"-etcdCaFile", c.EtcdCaFile,
+		"-bbsAddress", c.BBSAddress,
 	}
 }
 

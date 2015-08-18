@@ -8,7 +8,8 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
+	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
+	fake_old_bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +22,8 @@ const aBit = 100 * time.Millisecond
 
 var _ = Describe("ConvergerProcess", func() {
 	var (
-		fakeBBS                     *fake_bbs.FakeConvergerBBS
+		fakeOldBBS                  *fake_old_bbs.FakeConvergerBBS
+		fakeBBSClient               *fake_bbs.FakeClient
 		logger                      *lagertest.TestLogger
 		fakeClock                   *fakeclock.FakeClock
 		convergeRepeatInterval      time.Duration
@@ -36,7 +38,8 @@ var _ = Describe("ConvergerProcess", func() {
 	)
 
 	BeforeEach(func() {
-		fakeBBS = new(fake_bbs.FakeConvergerBBS)
+		fakeOldBBS = new(fake_old_bbs.FakeConvergerBBS)
+		fakeBBSClient = new(fake_bbs.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 
@@ -52,13 +55,14 @@ var _ = Describe("ConvergerProcess", func() {
 		waitEvents = cellEvents
 		waitErrs = errs
 
-		fakeBBS.CellEventsReturns(cellEvents)
+		fakeOldBBS.CellEventsReturns(cellEvents)
 	})
 
 	JustBeforeEach(func() {
 		process = ifrit.Invoke(
 			converger_process.New(
-				fakeBBS,
+				fakeOldBBS,
+				fakeBBSClient,
 				nil,
 				logger,
 				fakeClock,
@@ -79,20 +83,20 @@ var _ = Describe("ConvergerProcess", func() {
 		It("converges tasks, LRPs, and auctions when the lock is periodically reestablished", func() {
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 
-			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
+			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration, _ := fakeBBS.ConvergeTasksArgsForCall(0)
+			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
 			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
 			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
 
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 
-			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
-			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
+			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
+			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 
-			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration, _ = fakeBBS.ConvergeTasksArgsForCall(1)
+			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration = fakeBBSClient.ConvergeTasksArgsForCall(1)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
 			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
 			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
@@ -101,17 +105,17 @@ var _ = Describe("ConvergerProcess", func() {
 
 	Describe("converging when cells disappear", func() {
 		It("converges tasks and LRPs immediately", func() {
-			Consistently(fakeBBS.ConvergeTasksCallCount).Should(Equal(0))
-			Consistently(fakeBBS.ConvergeLRPsCallCount).Should(Equal(0))
+			Consistently(fakeBBSClient.ConvergeTasksCallCount).Should(Equal(0))
+			Consistently(fakeOldBBS.ConvergeLRPsCallCount).Should(Equal(0))
 
 			waitEvents <- services_bbs.CellDisappearedEvent{
 				IDs: []string{"some-cell-id"},
 			}
 
-			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
+			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration, _ := fakeBBS.ConvergeTasksArgsForCall(0)
+			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
 			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
 			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
@@ -122,8 +126,8 @@ var _ = Describe("ConvergerProcess", func() {
 				IDs: []string{"some-cell-id"},
 			}
 
-			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
-			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
+			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
+			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 		})
 
 		It("defers convergence to one full interval later", func() {
@@ -133,17 +137,17 @@ var _ = Describe("ConvergerProcess", func() {
 				IDs: []string{"some-cell-id"},
 			}
 
-			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
+			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			fakeClock.Increment(2 * aBit)
 
-			Consistently(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Consistently(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Consistently(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
+			Consistently(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			fakeClock.Increment(convergeRepeatInterval + aBit)
-			Eventually(fakeBBS.ConvergeTasksCallCount, aBit).Should(Equal(2))
-			Eventually(fakeBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
+			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
+			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 		})
 	})
 })
