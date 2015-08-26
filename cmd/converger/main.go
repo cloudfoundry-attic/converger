@@ -25,12 +25,6 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
-var receptorTaskHandlerURL = flag.String(
-	"receptorTaskHandlerURL",
-	"http://127.0.0.1:1169",
-	"location of receptor task handler",
-)
-
 var consulCluster = flag.String(
 	"consulCluster",
 	"",
@@ -183,7 +177,7 @@ func initializeConvergerBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger la
 		logger.Fatal("failed-to-construct-etcd-tls-client", err)
 	}
 
-	return oldBbs.NewConvergerBBS(etcdAdapter, session, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return oldBbs.NewConvergerBBS(etcdAdapter, session, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {

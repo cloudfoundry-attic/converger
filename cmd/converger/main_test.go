@@ -136,7 +136,7 @@ var _ = Describe("Converger", func() {
 		bbsClient = bbs.NewClient(fmt.Sprint("http://", bbsArgs.Address))
 
 		consulSession = consulRunner.NewSession("a-session")
-		legacyBBS = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), logger)
+		legacyBBS = Bbs.NewBBS(etcdClient, consulSession, clock.NewClock(), logger)
 
 		capacity := oldmodels.NewCellCapacity(512, 1024, 124)
 		cellPresence := oldmodels.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
