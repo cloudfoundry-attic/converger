@@ -67,12 +67,6 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 
 	cellDisappeared := make(chan services_bbs.CellEvent)
 
-	logger := c.logger.WithData(lager.Data{
-		"kick-task-duration":             c.kickTaskDuration.String(),
-		"expire-pending-task-duration":   c.expirePendingTaskDuration.String(),
-		"expire-completed-task-duration": c.expireCompletedTaskDuration.String(),
-	})
-
 	done := make(chan struct{})
 	go func() {
 		events := c.oldbbs.CellEvents()
@@ -103,19 +97,18 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			close(done)
 			return nil
 
-		case event := <-cellDisappeared:
-			c.converge(logger.Session("cell-disappeared", lager.Data{"cell-id": event.CellIDs()}))
+		case <-cellDisappeared:
+			c.converge()
 
 		case <-convergeTimer.C():
-			c.converge(logger.Session("converge-tick"))
+			c.converge()
 		}
 
 		convergeTimer.Reset(c.convergeRepeatInterval)
 	}
 }
 
-func (c *ConvergerProcess) converge(tickLog lager.Logger) {
-	cellsLoader := c.oldbbs.NewCellsLoader()
+func (c *ConvergerProcess) converge() {
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
@@ -131,7 +124,7 @@ func (c *ConvergerProcess) converge(tickLog lager.Logger) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.oldbbs.ConvergeLRPs(tickLog, cellsLoader)
+		c.bbsClient.ConvergeLRPs()
 	}()
 
 	wg.Wait()

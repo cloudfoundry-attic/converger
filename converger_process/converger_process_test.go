@@ -84,7 +84,7 @@ var _ = Describe("ConvergerProcess", func() {
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
@@ -94,7 +94,7 @@ var _ = Describe("ConvergerProcess", func() {
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
-			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
+			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 
 			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration = fakeBBSClient.ConvergeTasksArgsForCall(1)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
@@ -106,14 +106,14 @@ var _ = Describe("ConvergerProcess", func() {
 	Describe("converging when cells disappear", func() {
 		It("converges tasks and LRPs immediately", func() {
 			Consistently(fakeBBSClient.ConvergeTasksCallCount).Should(Equal(0))
-			Consistently(fakeOldBBS.ConvergeLRPsCallCount).Should(Equal(0))
+			Consistently(fakeBBSClient.ConvergeLRPsCallCount).Should(Equal(0))
 
 			waitEvents <- services_bbs.CellDisappearedEvent{
 				IDs: []string{"some-cell-id"},
 			}
 
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
@@ -127,7 +127,7 @@ var _ = Describe("ConvergerProcess", func() {
 			}
 
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
-			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
+			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 		})
 
 		It("defers convergence to one full interval later", func() {
@@ -138,16 +138,16 @@ var _ = Describe("ConvergerProcess", func() {
 			}
 
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			fakeClock.Increment(2 * aBit)
 
 			Consistently(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
-			Consistently(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(1))
+			Consistently(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
 			fakeClock.Increment(convergeRepeatInterval + aBit)
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
-			Eventually(fakeOldBBS.ConvergeLRPsCallCount, aBit).Should(Equal(2))
+			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 		})
 	})
 })
