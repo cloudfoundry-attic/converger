@@ -104,6 +104,7 @@ var _ = Describe("Converger", func() {
 
 		bbsArgs = bbsrunner.Args{
 			Address:           bbsAddress,
+			AdvertiseURL:      bbsURL.String(),
 			AuctioneerAddress: "some-address",
 			EtcdCluster:       etcdCluster,
 			ConsulCluster:     consulRunner.ConsulCluster(),
