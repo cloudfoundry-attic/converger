@@ -69,7 +69,7 @@ var expirePendingTaskDuration = flag.Duration(
 
 var communicationTimeout = flag.Duration(
 	"communicationTimeout",
-	10*time.Second,
+	1*time.Minute,
 	"Timeout applied to all HTTP requests.",
 )
 
