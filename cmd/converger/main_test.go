@@ -208,7 +208,7 @@ var _ = Describe("Converger", func() {
 			startConverger()
 			Eventually(runner, 5*time.Second).Should(gbytes.Say("acquire-lock-succeeded"))
 
-			consulRunner.Reset()
+			consulRunner.DestroySession("converger")
 		})
 
 		It("exits with an error", func() {

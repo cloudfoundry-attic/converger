@@ -62,8 +62,13 @@ func New(
 }
 
 func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	logger := c.logger.Session("converger-process")
+	logger.Debug("started")
 	convergeTimer := c.clock.NewTimer(c.convergeRepeatInterval)
-	defer convergeTimer.Stop()
+	defer func() {
+		logger.Debug("done")
+		convergeTimer.Stop()
+	}()
 
 	cellDisappeared := make(chan services_bbs.CellEvent)
 
@@ -75,7 +80,7 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			case event := <-events:
 				switch event.EventType() {
 				case services_bbs.CellDisappeared:
-					c.logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
+					logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
 					select {
 					case cellDisappeared <- event:
 					case <-done:
@@ -109,22 +114,41 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 }
 
 func (c *ConvergerProcess) converge() {
+	logger := c.logger.Session("executing-convergence")
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		c.bbsClient.ConvergeTasks(
+		logger.Debug("converge-tasks-started")
+
+		defer func() {
+			logger.Debug("converge-tasks-done")
+			wg.Done()
+		}()
+
+		err := c.bbsClient.ConvergeTasks(
 			c.kickTaskDuration,
 			c.expirePendingTaskDuration,
 			c.expireCompletedTaskDuration,
 		)
+		if err != nil {
+			logger.Error("failed-to-converge-tasks", err)
+		}
 	}()
 
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		c.bbsClient.ConvergeLRPs()
+		logger.Debug("converge-lrps-started")
+
+		defer func() {
+			logger.Debug("converge-lrps-done")
+			wg.Done()
+		}()
+
+		err := c.bbsClient.ConvergeLRPs()
+		if err != nil {
+			logger.Error("failed-to-converge-lrps", err)
+		}
 	}()
 
 	wg.Wait()
