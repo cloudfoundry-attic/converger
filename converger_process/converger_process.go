@@ -10,14 +10,13 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/consuladapter"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/pivotal-golang/clock"
 )
 
 type ConvergerProcess struct {
 	id                          string
-	oldbbs                      Bbs.ConvergerBBS
+	locketClient                locket.Client
 	bbsClient                   bbs.Client
 	consulSession               *consuladapter.Session
 	logger                      lager.Logger
@@ -30,7 +29,7 @@ type ConvergerProcess struct {
 }
 
 func New(
-	oldBbs Bbs.ConvergerBBS,
+	locketClient locket.Client,
 	bbsClient bbs.Client,
 	consulSession *consuladapter.Session,
 	logger lager.Logger,
@@ -48,7 +47,7 @@ func New(
 
 	return &ConvergerProcess{
 		id:            uuid.String(),
-		oldbbs:        oldBbs,
+		locketClient:  locketClient,
 		bbsClient:     bbsClient,
 		consulSession: consulSession,
 		logger:        logger,
@@ -70,16 +69,16 @@ func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 		convergeTimer.Stop()
 	}()
 
-	cellDisappeared := make(chan services_bbs.CellEvent)
+	cellDisappeared := make(chan locket.CellEvent)
 
 	done := make(chan struct{})
 	go func() {
-		events := c.oldbbs.CellEvents()
+		events := c.locketClient.CellEvents()
 		for {
 			select {
 			case event := <-events:
 				switch event.EventType() {
-				case services_bbs.CellDisappeared:
+				case locket.CellDisappeared:
 					logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
 					select {
 					case cellDisappeared <- event:

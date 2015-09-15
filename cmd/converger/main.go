@@ -13,10 +13,7 @@ import (
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	"github.com/cloudfoundry-incubator/locket"
-	oldBbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/workpool"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -87,17 +84,11 @@ const (
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
-	etcdFlags := etcdstoreadapter.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	cf_http.Initialize(*communicationTimeout)
 
 	logger, reconfigurableSink := cf_lager.New("converger")
-
-	etcdOptions, err := etcdFlags.Validate()
-	if err != nil {
-		logger.Fatal("etcd-validation-failed", err)
-	}
 
 	initializeDropsonde(logger)
 
@@ -112,17 +103,15 @@ func main() {
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	convergerBBS := initializeConvergerBBS(etcdOptions, logger, consulSession)
-
 	convergeClock := clock.NewClock()
-	locket := locket.New(consulSession, convergeClock, logger)
+	locketClient := locket.NewClient(consulSession, convergeClock, logger)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	lockMaintainer := locket.NewConvergeLock(uuid.String(), *lockRetryInterval)
+	lockMaintainer := locketClient.NewConvergeLock(uuid.String(), *lockRetryInterval)
 
 	if err := validateBBSAddress(); err != nil {
 		logger.Fatal("invalid-bbs-address", err)
@@ -131,7 +120,7 @@ func main() {
 	bbsClient := bbs.NewClient(*bbsAddress)
 
 	converger := converger_process.New(
-		convergerBBS,
+		locketClient,
 		bbsClient,
 		consulSession,
 		logger,
@@ -166,21 +155,6 @@ func main() {
 	}
 
 	logger.Info("exited")
-}
-
-func initializeConvergerBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger, session *consuladapter.Session) oldBbs.ConvergerBBS {
-	workPool, err := workpool.NewWorkPool(oldBbs.ConvergerBBSWorkPoolSize)
-	if err != nil {
-		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": oldBbs.ConvergerBBSWorkPoolSize}) // should never happen
-	}
-
-	etcdAdapter, err := etcdstoreadapter.New(etcdOptions, workPool)
-
-	if err != nil {
-		logger.Fatal("failed-to-construct-etcd-tls-client", err)
-	}
-
-	return oldBbs.NewConvergerBBS(etcdAdapter, session, clock.NewClock(), logger)
 }
 
 func initializeDropsonde(logger lager.Logger) {

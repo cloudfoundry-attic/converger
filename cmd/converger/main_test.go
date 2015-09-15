@@ -14,7 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -27,8 +26,7 @@ import (
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/locket"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
@@ -52,7 +50,6 @@ var _ = Describe("Converger", func() {
 		bbsArgs          bbsrunner.Args
 		bbsProcess       ifrit.Process
 		bbsClient        bbs.Client
-		legacyBBS        *Bbs.BBS
 		convergerConfig  *convergerrunner.Config
 		convergerProcess ifrit.Process
 		runner           *ginkgomon.Runner
@@ -116,7 +113,6 @@ var _ = Describe("Converger", func() {
 			KickTaskDuration:            taskKickInterval.String(),
 			ExpirePendingTaskDuration:   expirePendingTaskDuration.String(),
 			ExpireCompletedTaskDuration: expireCompletedTaskDuration.String(),
-			EtcdCluster:                 etcdCluster,
 			ConsulCluster:               consulRunner.ConsulCluster(),
 			LogLevel:                    "info",
 			BBSAddress:                  bbsURL.String(),
@@ -137,7 +133,6 @@ var _ = Describe("Converger", func() {
 		bbsClient = bbs.NewClient(fmt.Sprint("http://", bbsArgs.Address))
 
 		consulSession = consulRunner.NewSession("a-session")
-		legacyBBS = Bbs.NewBBS(etcdClient, consulSession, clock.NewClock(), logger)
 
 		capacity := oldmodels.NewCellCapacity(512, 1024, 124)
 		cellPresence := oldmodels.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
@@ -145,7 +140,7 @@ var _ = Describe("Converger", func() {
 		value, err := oldmodels.ToJSON(cellPresence)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = consulSession.SetPresence(shared.CellSchemaPath(cellPresence.CellID), value)
+		_, err = consulSession.SetPresence(locket.CellSchemaPath(cellPresence.CellID), value)
 		Expect(err).NotTo(HaveOccurred())
 
 	})
@@ -221,7 +216,7 @@ var _ = Describe("Converger", func() {
 
 		BeforeEach(func() {
 			otherSession = consulRunner.NewSession("other-session")
-			err := otherSession.AcquireLock(shared.LockSchemaPath("converge_lock"), []byte("something-else"))
+			err := otherSession.AcquireLock(locket.LockSchemaPath("converge_lock"), []byte("something-else"))
 			Expect(err).NotTo(HaveOccurred())
 
 			startConverger()

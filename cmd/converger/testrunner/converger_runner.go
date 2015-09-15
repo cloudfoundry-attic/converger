@@ -19,18 +19,13 @@ type Config struct {
 	KickTaskDuration            string
 	ExpirePendingTaskDuration   string
 	ExpireCompletedTaskDuration string
-	EtcdCluster                 string
 	ConsulCluster               string
 	LogLevel                    string
-	EtcdCertFile                string
-	EtcdKeyFile                 string
-	EtcdCaFile                  string
 	BBSAddress                  string
 }
 
 func (c *Config) ArgSlice() []string {
 	return []string{
-		"-etcdCluster", c.EtcdCluster,
 		"-logLevel", c.LogLevel,
 		"-convergeRepeatInterval", c.ConvergeRepeatInterval,
 		"-kickTaskDuration", c.KickTaskDuration,
@@ -38,9 +33,6 @@ func (c *Config) ArgSlice() []string {
 		"-expireCompletedTaskDuration", c.ExpireCompletedTaskDuration,
 		"-lockRetryInterval", "1s",
 		"-consulCluster", c.ConsulCluster,
-		"-etcdCertFile", c.EtcdCertFile,
-		"-etcdKeyFile", c.EtcdKeyFile,
-		"-etcdCaFile", c.EtcdCaFile,
 		"-bbsAddress", c.BBSAddress,
 	}
 }
