@@ -12,8 +12,8 @@ import (
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
+	"github.com/cloudfoundry-incubator/locket"
 	oldBbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -33,13 +33,13 @@ var consulCluster = flag.String(
 
 var lockTTL = flag.Duration(
 	"lockTTL",
-	lock_bbs.LockTTL,
+	locket.LockTTL,
 	"TTL for service lock",
 )
 
 var lockRetryInterval = flag.Duration(
 	"lockRetryInterval",
-	lock_bbs.RetryInterval,
+	locket.RetryInterval,
 	"interval to wait before retrying a failed lock acquisition",
 )
 
@@ -114,12 +114,15 @@ func main() {
 
 	convergerBBS := initializeConvergerBBS(etcdOptions, logger, consulSession)
 
+	convergeClock := clock.NewClock()
+	locket := locket.New(consulSession, convergeClock, logger)
+
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
 
-	lockMaintainer := convergerBBS.NewConvergeLock(uuid.String(), *lockRetryInterval)
+	lockMaintainer := locket.NewConvergeLock(uuid.String(), *lockRetryInterval)
 
 	if err := validateBBSAddress(); err != nil {
 		logger.Fatal("invalid-bbs-address", err)
@@ -132,7 +135,7 @@ func main() {
 		bbsClient,
 		consulSession,
 		logger,
-		clock.NewClock(),
+		convergeClock,
 		*convergeRepeatInterval,
 		*kickTaskDuration,
 		*expirePendingTaskDuration,
