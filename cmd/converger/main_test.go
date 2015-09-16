@@ -105,6 +105,9 @@ var _ = Describe("Converger", func() {
 			AuctioneerAddress: "some-address",
 			EtcdCluster:       etcdCluster,
 			ConsulCluster:     consulRunner.ConsulCluster(),
+
+			EncryptionKeys: []string{"label:key"},
+			ActiveKeyLabel: "label",
 		}
 
 		convergerConfig = &convergerrunner.Config{
