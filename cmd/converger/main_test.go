@@ -27,7 +27,7 @@ import (
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	"github.com/cloudfoundry-incubator/locket"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 )
 
 type BinPaths struct {
@@ -134,10 +134,10 @@ var _ = Describe("Converger", func() {
 
 		consulSession = consulRunner.NewSession("a-session")
 
-		capacity := oldmodels.NewCellCapacity(512, 1024, 124)
-		cellPresence := oldmodels.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
+		capacity := presence.NewCellCapacity(512, 1024, 124)
+		cellPresence := presence.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
 
-		value, err := oldmodels.ToJSON(cellPresence)
+		value, err := presence.ToJSON(cellPresence)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = consulSession.SetPresence(locket.CellSchemaPath(cellPresence.CellID), value)
