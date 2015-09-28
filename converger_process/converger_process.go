@@ -9,16 +9,14 @@ import (
 	"github.com/pivotal-golang/lager"
 
 	"github.com/cloudfoundry-incubator/bbs"
-	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/locket"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/pivotal-golang/clock"
 )
 
 type ConvergerProcess struct {
 	id                          string
-	locketClient                locket.Client
+	bbsServiceClient            bbs.ServiceClient
 	bbsClient                   bbs.Client
-	consulSession               *consuladapter.Session
 	logger                      lager.Logger
 	clock                       clock.Clock
 	convergeRepeatInterval      time.Duration
@@ -29,9 +27,8 @@ type ConvergerProcess struct {
 }
 
 func New(
-	locketClient locket.Client,
+	bbsServiceClient bbs.ServiceClient,
 	bbsClient bbs.Client,
-	consulSession *consuladapter.Session,
 	logger lager.Logger,
 	clock clock.Clock,
 	convergeRepeatInterval,
@@ -46,12 +43,11 @@ func New(
 	}
 
 	return &ConvergerProcess{
-		id:            uuid.String(),
-		locketClient:  locketClient,
-		bbsClient:     bbsClient,
-		consulSession: consulSession,
-		logger:        logger,
-		clock:         clock,
+		id:               uuid.String(),
+		bbsServiceClient: bbsServiceClient,
+		bbsClient:        bbsClient,
+		logger:           logger,
+		clock:            clock,
 		convergeRepeatInterval:      convergeRepeatInterval,
 		kickTaskDuration:            kickTaskDuration,
 		expirePendingTaskDuration:   expirePendingTaskDuration,
@@ -62,47 +58,29 @@ func New(
 
 func (c *ConvergerProcess) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := c.logger.Session("converger-process")
-	logger.Debug("started")
+	logger.Info("started")
+
 	convergeTimer := c.clock.NewTimer(c.convergeRepeatInterval)
 	defer func() {
-		logger.Debug("done")
+		logger.Info("done")
 		convergeTimer.Stop()
 	}()
 
-	cellDisappeared := make(chan locket.CellEvent)
-
-	done := make(chan struct{})
-	go func() {
-		events := c.locketClient.CellEvents()
-		for {
-			select {
-			case event := <-events:
-				switch event.EventType() {
-				case locket.CellDisappeared:
-					logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
-					select {
-					case cellDisappeared <- event:
-					case <-done:
-						return
-					}
-				}
-
-			case <-done:
-				return
-			}
-		}
-	}()
+	cellEvents := c.bbsServiceClient.CellEvents(logger)
 
 	close(ready)
 
 	for {
 		select {
 		case <-signals:
-			close(done)
 			return nil
 
-		case <-cellDisappeared:
-			c.converge()
+		case event := <-cellEvents:
+			switch event.EventType() {
+			case models.EventTypeCellDisappeared:
+				logger.Info("received-cell-disappeared-event", lager.Data{"cell-id": event.CellIDs()})
+				c.converge()
+			}
 
 		case <-convergeTimer.C():
 			c.converge()
@@ -118,10 +96,10 @@ func (c *ConvergerProcess) converge() {
 
 	wg.Add(1)
 	go func() {
-		logger.Debug("converge-tasks-started")
+		logger.Info("converge-tasks-started")
 
 		defer func() {
-			logger.Debug("converge-tasks-done")
+			logger.Info("converge-tasks-done")
 			wg.Done()
 		}()
 
@@ -137,10 +115,10 @@ func (c *ConvergerProcess) converge() {
 
 	wg.Add(1)
 	go func() {
-		logger.Debug("converge-lrps-started")
+		logger.Info("converge-lrps-started")
 
 		defer func() {
-			logger.Debug("converge-lrps-done")
+			logger.Info("converge-lrps-done")
 			wg.Done()
 		}()
 
