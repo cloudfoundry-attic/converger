@@ -9,8 +9,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 
 	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
-	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/locket/locketfakes"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -22,7 +21,7 @@ const aBit = 100 * time.Millisecond
 
 var _ = Describe("ConvergerProcess", func() {
 	var (
-		locketClient                *locketfakes.FakeClient
+		fakeBBSServiceClient        *fake_bbs.FakeServiceClient
 		fakeBBSClient               *fake_bbs.FakeClient
 		logger                      *lagertest.TestLogger
 		fakeClock                   *fakeclock.FakeClock
@@ -33,12 +32,12 @@ var _ = Describe("ConvergerProcess", func() {
 
 		process ifrit.Process
 
-		waitEvents chan<- locket.CellEvent
+		waitEvents chan<- models.CellEvent
 		waitErrs   chan<- error
 	)
 
 	BeforeEach(func() {
-		locketClient = new(locketfakes.FakeClient)
+		fakeBBSServiceClient = new(fake_bbs.FakeServiceClient)
 		fakeBBSClient = new(fake_bbs.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 		fakeClock = fakeclock.NewFakeClock(time.Now())
@@ -49,21 +48,20 @@ var _ = Describe("ConvergerProcess", func() {
 		expirePendingTaskDuration = 30 * time.Second
 		expireCompletedTaskDuration = 60 * time.Minute
 
-		cellEvents := make(chan locket.CellEvent, 100)
+		cellEvents := make(chan models.CellEvent, 100)
 		errs := make(chan error, 100)
 
 		waitEvents = cellEvents
 		waitErrs = errs
 
-		locketClient.CellEventsReturns(cellEvents)
+		fakeBBSServiceClient.CellEventsReturns(cellEvents)
 	})
 
 	JustBeforeEach(func() {
 		process = ifrit.Invoke(
 			converger_process.New(
-				locketClient,
+				fakeBBSServiceClient,
 				fakeBBSClient,
-				nil,
 				logger,
 				fakeClock,
 				convergeRepeatInterval,
@@ -108,7 +106,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Consistently(fakeBBSClient.ConvergeTasksCallCount).Should(Equal(0))
 			Consistently(fakeBBSClient.ConvergeLRPsCallCount).Should(Equal(0))
 
-			waitEvents <- locket.CellDisappearedEvent{
+			waitEvents <- models.CellDisappearedEvent{
 				IDs: []string{"some-cell-id"},
 			}
 
@@ -122,7 +120,7 @@ var _ = Describe("ConvergerProcess", func() {
 
 			waitErrs <- errors.New("whoopsie")
 
-			waitEvents <- locket.CellDisappearedEvent{
+			waitEvents <- models.CellDisappearedEvent{
 				IDs: []string{"some-cell-id"},
 			}
 
@@ -133,7 +131,7 @@ var _ = Describe("ConvergerProcess", func() {
 		It("defers convergence to one full interval later", func() {
 			fakeClock.Increment(convergeRepeatInterval - aBit)
 
-			waitEvents <- locket.CellDisappearedEvent{
+			waitEvents <- models.CellDisappearedEvent{
 				IDs: []string{"some-cell-id"},
 			}
 

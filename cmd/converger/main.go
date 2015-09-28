@@ -12,6 +12,7 @@ import (
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/converger"
 	"github.com/cloudfoundry-incubator/converger/converger_process"
 	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry/dropsonde"
@@ -121,37 +122,26 @@ func main() {
 
 	logger, reconfigurableSink := cf_lager.New("converger")
 
-	initializeDropsonde(logger)
-
-	client, err := consuladapter.NewClient(*consulCluster)
-	if err != nil {
-		logger.Fatal("new-client-failed", err)
-	}
-
-	sessionMgr := consuladapter.NewSessionManager(client)
-	consulSession, err := consuladapter.NewSession("converger", *lockTTL, client, sessionMgr)
-	if err != nil {
-		logger.Fatal("consul-session-failed", err)
-	}
-
-	convergeClock := clock.NewClock()
-	locketClient := locket.NewClient(consulSession, convergeClock, logger)
-
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		logger.Fatal("Couldn't generate uuid", err)
-	}
-
-	lockMaintainer := locketClient.NewConvergeLock(uuid.String(), *lockRetryInterval)
-
 	if err := validateBBSAddress(); err != nil {
 		logger.Fatal("invalid-bbs-address", err)
 	}
 
+	initializeDropsonde(logger)
+
+	convergeClock := clock.NewClock()
+	consulSession := initializeConsulSession(logger)
+	bbsServiceClient := bbs.NewServiceClient(consulSession, convergeClock)
+	convergerServiceClient := converger.NewServiceClient(consulSession, convergeClock)
+
+	lockMaintainer := convergerServiceClient.NewConvergerLockRunner(
+		logger,
+		generateGuid(logger),
+		*lockRetryInterval,
+	)
+
 	converger := converger_process.New(
-		locketClient,
+		bbsServiceClient,
 		initializeBBSClient(logger),
-		consulSession,
 		logger,
 		convergeClock,
 		*convergeRepeatInterval,
@@ -177,13 +167,21 @@ func main() {
 
 	logger.Info("started")
 
-	err = <-process.Wait()
+	err := <-process.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)
 	}
 
 	logger.Info("exited")
+}
+
+func generateGuid(logger lager.Logger) string {
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		logger.Fatal("Couldn't generate uuid", err)
+	}
+	return uuid.String()
 }
 
 func initializeDropsonde(logger lager.Logger) {
@@ -198,6 +196,20 @@ func validateBBSAddress() error {
 		return errors.New("bbsAddress is required")
 	}
 	return nil
+}
+
+func initializeConsulSession(logger lager.Logger) *consuladapter.Session {
+	client, err := consuladapter.NewClient(*consulCluster)
+	if err != nil {
+		logger.Fatal("new-client-failed", err)
+	}
+
+	sessionMgr := consuladapter.NewSessionManager(client)
+	consulSession, err := consuladapter.NewSession("converger", *lockTTL, client, sessionMgr)
+	if err != nil {
+		logger.Fatal("consul-session-failed", err)
+	}
+	return consulSession
 }
 
 func initializeBBSClient(logger lager.Logger) bbs.Client {
