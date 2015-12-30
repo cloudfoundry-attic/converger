@@ -142,7 +142,7 @@ var _ = Describe("Converger", func() {
 		value, err := json.Marshal(cellPresence)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = consulSession.SetPresence(bbs.CellSchemaPath(cellPresence.CellID), value)
+		_, err = consulSession.SetPresence(bbs.CellSchemaPath(cellPresence.CellId), value)
 		Expect(err).NotTo(HaveOccurred())
 
 	})
