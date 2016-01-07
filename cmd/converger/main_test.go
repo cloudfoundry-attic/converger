@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -56,8 +55,6 @@ var _ = Describe("Converger", func() {
 		consulRunner  *consulrunner.ClusterRunner
 		consulSession *consuladapter.Session
 
-		etcdClient storeadapter.StoreAdapter
-
 		logger lager.Logger
 	)
 
@@ -80,8 +77,6 @@ var _ = Describe("Converger", func() {
 		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
 		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
-
-		etcdClient = etcdRunner.Adapter(nil)
 
 		consulRunner = consulrunner.NewClusterRunner(
 			9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
