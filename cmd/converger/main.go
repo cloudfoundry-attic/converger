@@ -211,8 +211,7 @@ func initializeConsulSession(logger lager.Logger) *consuladapter.Session {
 		logger.Fatal("new-client-failed", err)
 	}
 
-	sessionMgr := consuladapter.NewSessionManager(client)
-	consulSession, err := consuladapter.NewSession("converger", *lockTTL, client, sessionMgr)
+	consulSession, err := consuladapter.NewSession("converger", *lockTTL, consuladapter.NewConsulClient(client))
 	if err != nil {
 		logger.Fatal("consul-session-failed", err)
 	}
