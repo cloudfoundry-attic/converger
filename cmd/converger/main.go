@@ -135,8 +135,18 @@ func main() {
 	initializeDropsonde(logger)
 
 	convergeClock := clock.NewClock()
-	consulSession := initializeConsulSession(logger)
-	bbsServiceClient := bbs.NewServiceClient(consulSession, convergeClock)
+	client, err := consuladapter.NewClient(*consulCluster)
+	if err != nil {
+		logger.Fatal("new-client-failed", err)
+	}
+
+	consulClient := consuladapter.NewConsulClient(client)
+
+	consulSession, err := consuladapter.NewSession("converger", *lockTTL, consulClient)
+	if err != nil {
+		logger.Fatal("consul-session-failed", err)
+	}
+	bbsServiceClient := bbs.NewServiceClient(logger, consulClient, *lockTTL, convergeClock)
 	convergerServiceClient := converger.NewServiceClient(consulSession, convergeClock)
 
 	lockMaintainer := convergerServiceClient.NewConvergerLockRunner(
@@ -173,7 +183,7 @@ func main() {
 
 	logger.Info("started")
 
-	err := <-process.Wait()
+	err = <-process.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)
@@ -203,19 +213,6 @@ func validateBBSAddress() error {
 		return errors.New("bbsAddress is required")
 	}
 	return nil
-}
-
-func initializeConsulSession(logger lager.Logger) *consuladapter.Session {
-	client, err := consuladapter.NewClient(*consulCluster)
-	if err != nil {
-		logger.Fatal("new-client-failed", err)
-	}
-
-	consulSession, err := consuladapter.NewSession("converger", *lockTTL, consuladapter.NewConsulClient(client))
-	if err != nil {
-		logger.Fatal("consul-session-failed", err)
-	}
-	return consulSession
 }
 
 func initializeBBSClient(logger lager.Logger) bbs.Client {
