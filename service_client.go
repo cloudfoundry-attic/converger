@@ -17,18 +17,21 @@ func ConvergerLockSchemaPath() string {
 }
 
 type ServiceClient interface {
-	NewConvergerLockRunner(logger lager.Logger, convergerID string, retryInterval time.Duration) ifrit.Runner
+	NewConvergerLockRunner(logger lager.Logger, convergerID string, retryInterval, lockTTL time.Duration) ifrit.Runner
 }
 
 type serviceClient struct {
-	session *consuladapter.Session
-	clock   clock.Clock
+	consulClient consuladapter.Client
+	clock        clock.Clock
 }
 
-func NewServiceClient(session *consuladapter.Session, clock clock.Clock) ServiceClient {
-	return serviceClient{session, clock}
+func NewServiceClient(consulClient consuladapter.Client, clock clock.Clock) ServiceClient {
+	return serviceClient{
+		consulClient: consulClient,
+		clock:        clock,
+	}
 }
 
-func (c serviceClient) NewConvergerLockRunner(logger lager.Logger, convergerID string, retryInterval time.Duration) ifrit.Runner {
-	return locket.NewLock(c.session, ConvergerLockSchemaPath(), []byte(convergerID), c.clock, retryInterval, logger)
+func (c serviceClient) NewConvergerLockRunner(logger lager.Logger, convergerID string, retryInterval, lockTTL time.Duration) ifrit.Runner {
+	return locket.NewLock(logger, c.consulClient, ConvergerLockSchemaPath(), []byte(convergerID), c.clock, retryInterval, lockTTL)
 }

@@ -142,17 +142,14 @@ func main() {
 
 	consulClient := consuladapter.NewConsulClient(client)
 
-	consulSession, err := consuladapter.NewSession("converger", *lockTTL, consulClient)
-	if err != nil {
-		logger.Fatal("consul-session-failed", err)
-	}
 	bbsServiceClient := bbs.NewServiceClient(logger, consulClient, *lockTTL, convergeClock)
-	convergerServiceClient := converger.NewServiceClient(consulSession, convergeClock)
+	convergerServiceClient := converger.NewServiceClient(consulClient, convergeClock)
 
 	lockMaintainer := convergerServiceClient.NewConvergerLockRunner(
 		logger,
 		generateGuid(logger),
 		*lockRetryInterval,
+		*lockTTL,
 	)
 
 	converger := converger_process.New(
