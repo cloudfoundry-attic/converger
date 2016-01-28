@@ -142,7 +142,7 @@ func main() {
 
 	consulClient := consuladapter.NewConsulClient(client)
 
-	bbsServiceClient := bbs.NewServiceClient(logger, consulClient, *lockTTL, convergeClock)
+	bbsServiceClient := bbs.NewServiceClient(consulClient, convergeClock)
 	convergerServiceClient := converger.NewServiceClient(consulClient, convergeClock)
 
 	lockMaintainer := convergerServiceClient.NewConvergerLockRunner(
