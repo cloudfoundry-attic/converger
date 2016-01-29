@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -52,8 +53,8 @@ var _ = Describe("Converger", func() {
 		convergerProcess ifrit.Process
 		runner           *ginkgomon.Runner
 
-		consulRunner  *consulrunner.ClusterRunner
-		consulSession *consuladapter.Session
+		consulRunner *consulrunner.ClusterRunner
+		consulClient consuladapter.Client
 
 		logger lager.Logger
 	)
@@ -129,7 +130,7 @@ var _ = Describe("Converger", func() {
 		bbsProcess = ginkgomon.Invoke(bbsrunner.New(binPaths.Bbs, bbsArgs))
 		bbsClient = bbs.NewClient(fmt.Sprint("http://", bbsArgs.Address))
 
-		consulSession = consulRunner.NewSession("a-session")
+		consulClient = consulRunner.NewConsulClient()
 
 		capacity := models.NewCellCapacity(512, 1024, 124)
 		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
@@ -137,9 +138,8 @@ var _ = Describe("Converger", func() {
 		value, err := json.Marshal(cellPresence)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = consulSession.SetPresence(bbs.CellSchemaPath(cellPresence.CellId), value)
-		Expect(err).NotTo(HaveOccurred())
-
+		presenceRunner := locket.NewPresence(logger, consulClient, bbs.CellSchemaPath(cellPresence.CellId), value, clock.NewClock(), locket.RetryInterval, locket.LockTTL)
+		ifrit.Invoke(presenceRunner)
 	})
 
 	AfterEach(func() {
@@ -165,18 +165,6 @@ var _ = Describe("Converger", func() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
-	itIsInactive := func() {
-		Describe("when a task is desired but its cell is dead", func() {
-			JustBeforeEach(createRunningTaskWithDeadCell)
-
-			It("does not converge the task", func() {
-				Consistently(func() []*models.Task {
-					return getTasksByState(bbsClient, models.Task_Completed)
-				}, 10*convergeRepeatInterval).Should(BeEmpty())
-			})
-		})
-	}
-
 	Context("when the converger has the lock", func() {
 		Describe("when a task is desired but its cell is dead", func() {
 			JustBeforeEach(createRunningTaskWithDeadCell)
@@ -200,7 +188,7 @@ var _ = Describe("Converger", func() {
 			startConverger()
 			Eventually(runner, 5*time.Second).Should(gbytes.Say("acquire-lock-succeeded"))
 
-			consulRunner.DestroySession("converger")
+			// consulRunner.DestroySession("converger")
 		})
 
 		XIt("exits with an error", func() {
@@ -209,21 +197,28 @@ var _ = Describe("Converger", func() {
 	})
 
 	Context("when the converger initially does not have the lock", func() {
-		var otherSession *consuladapter.Session
+		var competingConvergerProcess ifrit.Process
 
 		BeforeEach(func() {
-			otherSession = consulRunner.NewSession("other-session")
-			err := otherSession.AcquireLock(locket.LockSchemaPath("converge_lock"), []byte("something-else"))
-			Expect(err).NotTo(HaveOccurred())
+			competingConvergerLock := locket.NewLock(logger, consulClient, locket.LockSchemaPath("converge_lock"), []byte{}, clock.NewClock(), 500*time.Millisecond, 10*time.Second)
+			competingConvergerProcess = ifrit.Invoke(competingConvergerLock)
 
 			startConverger()
 		})
 
-		itIsInactive()
+		Describe("when a task is desired but its cell is dead", func() {
+			JustBeforeEach(createRunningTaskWithDeadCell)
+
+			It("does not converge the task", func() {
+				Consistently(func() []*models.Task {
+					return getTasksByState(bbsClient, models.Task_Completed)
+				}, 10*convergeRepeatInterval).Should(BeEmpty())
+			})
+		})
 
 		Describe("when the lock becomes available", func() {
 			BeforeEach(func() {
-				otherSession.Destroy()
+				ginkgomon.Kill(competingConvergerProcess)
 				time.Sleep(convergeRepeatInterval + 10*time.Millisecond)
 			})
 
