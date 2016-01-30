@@ -130,7 +130,7 @@ var _ = Describe("Converger", func() {
 		bbsProcess = ginkgomon.Invoke(bbsrunner.New(binPaths.Bbs, bbsArgs))
 		bbsClient = bbs.NewClient(fmt.Sprint("http://", bbsArgs.Address))
 
-		consulClient = consulRunner.NewConsulClient()
+		consulClient = consulRunner.NewClient()
 
 		capacity := models.NewCellCapacity(512, 1024, 124)
 		cellPresence := models.NewCellPresence("the-cell-id", "1.2.3.4", "the-zone", capacity, []string{}, []string{})
@@ -188,10 +188,11 @@ var _ = Describe("Converger", func() {
 			startConverger()
 			Eventually(runner, 5*time.Second).Should(gbytes.Say("acquire-lock-succeeded"))
 
-			// consulRunner.DestroySession("converger")
+			_, err := consulClient.KV().DeleteTree(locket.LockSchemaPath("converge_lock"), nil)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
-		XIt("exits with an error", func() {
+		It("exits with an error", func() {
 			Eventually(runner, exitDuration).Should(Exit(1))
 		})
 	})

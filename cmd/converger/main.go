@@ -135,12 +135,10 @@ func main() {
 	initializeDropsonde(logger)
 
 	convergeClock := clock.NewClock()
-	client, err := consuladapter.NewClient(*consulCluster)
+	consulClient, err := consuladapter.NewClientFromUrl(*consulCluster)
 	if err != nil {
 		logger.Fatal("new-client-failed", err)
 	}
-
-	consulClient := consuladapter.NewConsulClient(client)
 
 	bbsServiceClient := bbs.NewServiceClient(consulClient, convergeClock)
 	convergerServiceClient := converger.NewServiceClient(consulClient, convergeClock)
