@@ -210,7 +210,7 @@ func validateBBSAddress() error {
 	return nil
 }
 
-func initializeBBSClient(logger lager.Logger) bbs.Client {
+func initializeBBSClient(logger lager.Logger) bbs.InternalClient {
 	bbsURL, err := url.Parse(*bbsAddress)
 	if err != nil {
 		logger.Fatal("Invalid BBS URL", err)

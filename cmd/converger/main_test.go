@@ -48,7 +48,7 @@ var _ = Describe("Converger", func() {
 		etcdRunner       *etcdstorerunner.ETCDClusterRunner
 		bbsArgs          bbsrunner.Args
 		bbsProcess       ifrit.Process
-		bbsClient        bbs.Client
+		bbsClient        bbs.InternalClient
 		convergerConfig  *convergerrunner.Config
 		convergerProcess ifrit.Process
 		runner           *ginkgomon.Runner
@@ -268,7 +268,7 @@ var _ = Describe("Converger", func() {
 	})
 })
 
-func getTasksByState(client bbs.Client, state models.Task_State) []*models.Task {
+func getTasksByState(client bbs.InternalClient, state models.Task_State) []*models.Task {
 	tasks, err := client.Tasks()
 	Expect(err).NotTo(HaveOccurred())
 

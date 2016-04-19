@@ -16,7 +16,7 @@ import (
 type ConvergerProcess struct {
 	id                          string
 	bbsServiceClient            bbs.ServiceClient
-	bbsClient                   bbs.Client
+	bbsClient                   bbs.InternalClient
 	logger                      lager.Logger
 	clock                       clock.Clock
 	convergeRepeatInterval      time.Duration
@@ -28,7 +28,7 @@ type ConvergerProcess struct {
 
 func New(
 	bbsServiceClient bbs.ServiceClient,
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	logger lager.Logger,
 	clock clock.Clock,
 	convergeRepeatInterval,
