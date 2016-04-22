@@ -1,13 +1,105 @@
 package main_test
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"time"
+
+	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
+	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
+	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
+	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"testing"
+)
+
+const (
+	convergeRepeatInterval      = 500 * time.Millisecond
+	taskKickInterval            = convergeRepeatInterval
+	expireCompletedTaskDuration = 3 * convergeRepeatInterval
+	expirePendingTaskDuration   = 30 * time.Minute
+)
+
+var (
+	binPaths        BinPaths
+	etcdRunner      *etcdstorerunner.ETCDClusterRunner
+	bbsArgs         bbsrunner.Args
+	consulRunner    *consulrunner.ClusterRunner
+	convergerConfig *convergerrunner.Config
+	logger          lager.Logger
 )
 
 func TestConverger(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Converger Suite")
 }
+
+var _ = SynchronizedBeforeSuite(func() []byte {
+	convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
+	Expect(err).NotTo(HaveOccurred())
+	bbsBinPath, err := Build("github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
+	Expect(err).NotTo(HaveOccurred())
+	bytes, err := json.Marshal(BinPaths{
+		Converger: convergerBinPath,
+		Bbs:       bbsBinPath,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	return bytes
+}, func(bytes []byte) {
+	binPaths = BinPaths{}
+	err := json.Unmarshal(bytes, &binPaths)
+	Expect(err).NotTo(HaveOccurred())
+
+	etcdPort := 5001 + config.GinkgoConfig.ParallelNode
+	etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
+
+	consulRunner = consulrunner.NewClusterRunner(
+		9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
+		1,
+		"http",
+	)
+
+	logger = lagertest.NewTestLogger("test")
+
+	bbsAddress := fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode())
+
+	bbsURL := &url.URL{
+		Scheme: "http",
+		Host:   bbsAddress,
+	}
+
+	bbsArgs = bbsrunner.Args{
+		Address:           bbsAddress,
+		AdvertiseURL:      bbsURL.String(),
+		AuctioneerAddress: "some-address",
+		EtcdCluster:       etcdCluster,
+		ConsulCluster:     consulRunner.ConsulCluster(),
+
+		EncryptionKeys: []string{"label:key"},
+		ActiveKeyLabel: "label",
+	}
+
+	convergerConfig = &convergerrunner.Config{
+		BinPath:                     binPaths.Converger,
+		ConvergeRepeatInterval:      convergeRepeatInterval.String(),
+		KickTaskDuration:            taskKickInterval.String(),
+		ExpirePendingTaskDuration:   expirePendingTaskDuration.String(),
+		ExpireCompletedTaskDuration: expireCompletedTaskDuration.String(),
+		ConsulCluster:               consulRunner.ConsulCluster(),
+		LogLevel:                    "info",
+		BBSAddress:                  bbsURL.String(),
+	}
+})
+
+var _ = SynchronizedAfterSuite(func() {
+}, func() {
+	CleanupBuildArtifacts()
+})

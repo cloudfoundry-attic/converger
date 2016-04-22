@@ -3,19 +3,14 @@ package main_test
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/clock"
-	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
@@ -24,7 +19,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	"github.com/cloudfoundry-incubator/locket"
 )
@@ -35,92 +29,16 @@ type BinPaths struct {
 }
 
 var _ = Describe("Converger", func() {
-	const (
-		exitDuration                = 4 * time.Second
-		convergeRepeatInterval      = 500 * time.Millisecond
-		taskKickInterval            = convergeRepeatInterval
-		expireCompletedTaskDuration = 3 * convergeRepeatInterval
-		expirePendingTaskDuration   = 30 * time.Minute
-	)
+	const exitDuration = 4 * time.Second
 
 	var (
-		binPaths         BinPaths
-		etcdRunner       *etcdstorerunner.ETCDClusterRunner
-		bbsArgs          bbsrunner.Args
 		bbsProcess       ifrit.Process
 		bbsClient        bbs.InternalClient
-		convergerConfig  *convergerrunner.Config
 		convergerProcess ifrit.Process
 		runner           *ginkgomon.Runner
 
-		consulRunner *consulrunner.ClusterRunner
 		consulClient consuladapter.Client
-
-		logger lager.Logger
 	)
-
-	SynchronizedBeforeSuite(func() []byte {
-		convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
-		Expect(err).NotTo(HaveOccurred())
-		bbsBinPath, err := Build("github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
-		Expect(err).NotTo(HaveOccurred())
-		bytes, err := json.Marshal(BinPaths{
-			Converger: convergerBinPath,
-			Bbs:       bbsBinPath,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		return bytes
-	}, func(bytes []byte) {
-		binPaths = BinPaths{}
-		err := json.Unmarshal(bytes, &binPaths)
-		Expect(err).NotTo(HaveOccurred())
-
-		etcdPort := 5001 + config.GinkgoConfig.ParallelNode
-		etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
-		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
-
-		consulRunner = consulrunner.NewClusterRunner(
-			9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
-			1,
-			"http",
-		)
-
-		logger = lagertest.NewTestLogger("test")
-
-		bbsAddress := fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode())
-
-		bbsURL := &url.URL{
-			Scheme: "http",
-			Host:   bbsAddress,
-		}
-
-		bbsArgs = bbsrunner.Args{
-			Address:           bbsAddress,
-			AdvertiseURL:      bbsURL.String(),
-			AuctioneerAddress: "some-address",
-			EtcdCluster:       etcdCluster,
-			ConsulCluster:     consulRunner.ConsulCluster(),
-
-			EncryptionKeys: []string{"label:key"},
-			ActiveKeyLabel: "label",
-		}
-
-		convergerConfig = &convergerrunner.Config{
-			BinPath:                     binPaths.Converger,
-			ConvergeRepeatInterval:      convergeRepeatInterval.String(),
-			KickTaskDuration:            taskKickInterval.String(),
-			ExpirePendingTaskDuration:   expirePendingTaskDuration.String(),
-			ExpireCompletedTaskDuration: expireCompletedTaskDuration.String(),
-			ConsulCluster:               consulRunner.ConsulCluster(),
-			LogLevel:                    "info",
-			BBSAddress:                  bbsURL.String(),
-		}
-	})
-
-	SynchronizedAfterSuite(func() {
-	}, func() {
-		CleanupBuildArtifacts()
-	})
 
 	BeforeEach(func() {
 		etcdRunner.Start()
