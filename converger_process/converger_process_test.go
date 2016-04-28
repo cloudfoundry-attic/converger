@@ -22,7 +22,7 @@ const aBit = 100 * time.Millisecond
 var _ = Describe("ConvergerProcess", func() {
 	var (
 		fakeBBSServiceClient        *fake_bbs.FakeServiceClient
-		fakeBBSClient               *fake_bbs.FakeClient
+		fakeBBSClient               *fake_bbs.FakeInternalClient
 		logger                      *lagertest.TestLogger
 		fakeClock                   *fakeclock.FakeClock
 		convergeRepeatInterval      time.Duration
@@ -38,7 +38,7 @@ var _ = Describe("ConvergerProcess", func() {
 
 	BeforeEach(func() {
 		fakeBBSServiceClient = new(fake_bbs.FakeServiceClient)
-		fakeBBSClient = new(fake_bbs.FakeClient)
+		fakeBBSClient = new(fake_bbs.FakeInternalClient)
 		logger = lagertest.NewTestLogger("test")
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 
