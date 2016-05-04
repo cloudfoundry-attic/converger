@@ -104,6 +104,7 @@ func (c *ConvergerProcess) converge() {
 		}()
 
 		err := c.bbsClient.ConvergeTasks(
+			logger,
 			c.kickTaskDuration,
 			c.expirePendingTaskDuration,
 			c.expireCompletedTaskDuration,
@@ -122,7 +123,7 @@ func (c *ConvergerProcess) converge() {
 			wg.Done()
 		}()
 
-		err := c.bbsClient.ConvergeLRPs()
+		err := c.bbsClient.ConvergeLRPs(logger)
 		if err != nil {
 			logger.Error("failed-to-converge-lrps", err)
 		}

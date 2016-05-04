@@ -76,10 +76,10 @@ var _ = Describe("Converger", func() {
 	createRunningTaskWithDeadCell := func() {
 		task := model_helpers.NewValidTask("task-guid")
 
-		err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
+		err := bbsClient.DesireTask(logger, task.TaskGuid, task.Domain, task.TaskDefinition)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = bbsClient.StartTask(task.TaskGuid, "dead-cell")
+		_, err = bbsClient.StartTask(logger, task.TaskGuid, "dead-cell")
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -187,7 +187,7 @@ var _ = Describe("Converger", func() {
 })
 
 func getTasksByState(client bbs.InternalClient, state models.Task_State) []*models.Task {
-	tasks, err := client.Tasks()
+	tasks, err := client.Tasks(logger)
 	Expect(err).NotTo(HaveOccurred())
 
 	filteredTasks := make([]*models.Task, 0)

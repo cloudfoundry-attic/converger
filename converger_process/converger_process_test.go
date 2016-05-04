@@ -84,7 +84,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
+			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
 			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
 			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
@@ -94,7 +94,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(2))
 			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(2))
 
-			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration = fakeBBSClient.ConvergeTasksArgsForCall(1)
+			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration = fakeBBSClient.ConvergeTasksArgsForCall(1)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
 			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
 			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
@@ -113,7 +113,7 @@ var _ = Describe("ConvergerProcess", func() {
 			Eventually(fakeBBSClient.ConvergeTasksCallCount, aBit).Should(Equal(1))
 			Eventually(fakeBBSClient.ConvergeLRPsCallCount, aBit).Should(Equal(1))
 
-			actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
+			_, actualKickTaskDuration, actualExpirePendingTaskDuration, actualExpireCompletedTaskDuration := fakeBBSClient.ConvergeTasksArgsForCall(0)
 			Expect(actualKickTaskDuration).To(Equal(kickTaskDuration))
 			Expect(actualExpirePendingTaskDuration).To(Equal(expirePendingTaskDuration))
 			Expect(actualExpireCompletedTaskDuration).To(Equal(expireCompletedTaskDuration))
