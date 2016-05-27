@@ -148,7 +148,7 @@ var _ = Describe("Converger", func() {
 					Eventually(func() []*models.Task {
 						completedTasks := getTasksByState(bbsClient, models.Task_Completed)
 						return failedTasks(completedTasks)
-					}, 10*convergeRepeatInterval).Should(HaveLen(1))
+					}, 20*convergeRepeatInterval).Should(HaveLen(1))
 				})
 			})
 		})
