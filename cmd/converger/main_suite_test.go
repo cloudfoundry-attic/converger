@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
 	"time"
 
 	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
+	"github.com/cloudfoundry-incubator/bbs/test_helpers"
+	"github.com/cloudfoundry-incubator/bbs/test_helpers/sqlrunner"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
-	"github.com/cloudfoundry/storeadapter/storerunner/mysqlrunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -39,9 +39,8 @@ var (
 	convergerConfig *convergerrunner.Config
 	logger          lager.Logger
 
-	mySQLProcess ifrit.Process
-	mySQLRunner  *mysqlrunner.MySQLRunner
-	useSQL       bool
+	sqlProcess ifrit.Process
+	sqlRunner  sqlrunner.SQLRunner
 )
 
 func TestConverger(t *testing.T) {
@@ -61,7 +60,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 	return bytes
 }, func(bytes []byte) {
-	useSQL = os.Getenv("USE_SQL") != ""
 	binPaths = BinPaths{}
 	err := json.Unmarshal(bytes, &binPaths)
 	Expect(err).NotTo(HaveOccurred())
@@ -70,9 +68,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	etcdCluster := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
 
-	if useSQL {
-		mySQLRunner = mysqlrunner.NewMySQLRunner(fmt.Sprintf("diego_%d", GinkgoParallelNode()))
-		mySQLProcess = ginkgomon.Invoke(mySQLRunner)
+	if test_helpers.UseSQL() {
+		dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+		sqlRunner = test_helpers.NewSQLRunner(dbName)
+		sqlProcess = ginkgomon.Invoke(sqlRunner)
 	}
 
 	consulRunner = consulrunner.NewClusterRunner(
@@ -105,9 +104,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		ActiveKeyLabel: "label",
 	}
 
-	if useSQL {
-		bbsArgs.DatabaseDriver = "mysql"
-		bbsArgs.DatabaseConnectionString = mySQLRunner.ConnectionString()
+	if test_helpers.UseSQL() {
+		bbsArgs.DatabaseDriver = sqlRunner.DriverName()
+		bbsArgs.DatabaseConnectionString = sqlRunner.ConnectionString()
 	}
 
 	convergerConfig = &convergerrunner.Config{
@@ -123,13 +122,13 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = SynchronizedAfterSuite(func() {
-	ginkgomon.Kill(mySQLProcess)
+	ginkgomon.Kill(sqlProcess)
 }, func() {
 	CleanupBuildArtifacts()
 })
 
 var _ = AfterEach(func() {
-	if useSQL {
-		mySQLRunner.Reset()
+	if test_helpers.UseSQL() {
+		sqlRunner.Reset()
 	}
 })
