@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/bbs"
+	"code.cloudfoundry.org/bbs"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"

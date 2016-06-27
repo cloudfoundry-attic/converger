@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"time"
 
-	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
-	"github.com/cloudfoundry-incubator/bbs/test_helpers"
-	"github.com/cloudfoundry-incubator/bbs/test_helpers/sqlrunner"
+	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
+	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
@@ -51,7 +51,7 @@ func TestConverger(t *testing.T) {
 var _ = SynchronizedBeforeSuite(func() []byte {
 	convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
 	Expect(err).NotTo(HaveOccurred())
-	bbsBinPath, err := Build("github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
+	bbsBinPath, err := Build("code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	bytes, err := json.Marshal(BinPaths{
 		Converger: convergerBinPath,
