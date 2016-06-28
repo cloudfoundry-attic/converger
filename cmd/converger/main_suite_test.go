@@ -9,8 +9,8 @@ import (
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
-	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
-	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
+	"code.cloudfoundry.org/consuladapter/consulrunner"
+	convergerrunner "code.cloudfoundry.org/converger/cmd/converger/testrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -49,7 +49,7 @@ func TestConverger(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	convergerBinPath, err := Build("github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
+	convergerBinPath, err := Build("code.cloudfoundry.org/converger/cmd/converger", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	bbsBinPath, err := Build("code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())

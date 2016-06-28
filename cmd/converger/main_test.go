@@ -18,8 +18,8 @@ import (
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
-	"github.com/cloudfoundry-incubator/consuladapter"
-	convergerrunner "github.com/cloudfoundry-incubator/converger/cmd/converger/testrunner"
+	"code.cloudfoundry.org/consuladapter"
+	convergerrunner "code.cloudfoundry.org/converger/cmd/converger/testrunner"
 	"github.com/cloudfoundry-incubator/locket"
 )
 

@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/clock/fakeclock"
 
-	"github.com/cloudfoundry-incubator/converger/converger_process"
+	"code.cloudfoundry.org/converger/converger_process"
 )
 
 const aBit = 100 * time.Millisecond
