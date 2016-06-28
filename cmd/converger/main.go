@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/converger"
 	"code.cloudfoundry.org/converger/converger_process"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/locket"
-	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
@@ -124,7 +124,7 @@ func main() {
 	cflager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
-	cf_http.Initialize(*communicationTimeout)
+	cfhttp.Initialize(*communicationTimeout)
 
 	logger, reconfigurableSink := cflager.New("converger")
 
