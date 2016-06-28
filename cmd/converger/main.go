@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/converger"
 	"code.cloudfoundry.org/converger/converger_process"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/locket"
-	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/nu7hatch/gouuid"
@@ -121,12 +121,12 @@ const (
 
 func main() {
 	debugserver.AddFlags(flag.CommandLine)
-	cf_lager.AddFlags(flag.CommandLine)
+	cflager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	cf_http.Initialize(*communicationTimeout)
 
-	logger, reconfigurableSink := cf_lager.New("converger")
+	logger, reconfigurableSink := cflager.New("converger")
 
 	if err := validateBBSAddress(); err != nil {
 		logger.Fatal("invalid-bbs-address", err)
