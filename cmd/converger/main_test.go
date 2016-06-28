@@ -20,7 +20,7 @@ import (
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/consuladapter"
 	convergerrunner "code.cloudfoundry.org/converger/cmd/converger/testrunner"
-	"github.com/cloudfoundry-incubator/locket"
+	"code.cloudfoundry.org/locket"
 )
 
 type BinPaths struct {
