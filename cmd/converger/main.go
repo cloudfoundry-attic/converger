@@ -12,8 +12,8 @@ import (
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/converger"
 	"code.cloudfoundry.org/converger/converger_process"
+	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/locket"
-	"github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry/dropsonde"
@@ -120,7 +120,7 @@ const (
 )
 
 func main() {
-	cf_debug_server.AddFlags(flag.CommandLine)
+	debugserver.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
@@ -166,9 +166,9 @@ func main() {
 		{"converger", converger},
 	}
 
-	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
 		members = append(grouper.Members{
-			{"debug-server", cf_debug_server.Runner(dbgAddr, reconfigurableSink)},
+			{"debug-server", debugserver.Runner(dbgAddr, reconfigurableSink)},
 		}, members...)
 	}
 
