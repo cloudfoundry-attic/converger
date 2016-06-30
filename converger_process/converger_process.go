@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/nu7hatch/gouuid"
-	"github.com/pivotal-golang/lager"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
